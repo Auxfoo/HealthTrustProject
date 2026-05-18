@@ -12,49 +12,46 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 646 >>
+<< /Length 688 >>
 stream
 BT
-/F1 18 Tf
+/F1 14 Tf
 72 760 Td
-/F1 16 Tf
 (TEST SAMPLE ONLY - NOT A REAL MEDICAL RECORD) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Document Type: Blood Test Report) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Patient Name: Demo Patient A) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Patient ID: HT-PAT-001) Tj
-/F1 11 Tf
-0 -17 Td
-(Date: 2026-05-18) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Collection Date: 2026-05-18) Tj
+0 -16 Td
+(Provider: Demo Central Lab) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Glucose: 132 mg/dL) Tj
-/F1 11 Tf
-0 -17 Td
-(Hemoglobin: 13.8 g/dL) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Complete Blood Count) Tj
+0 -16 Td
+(Hemoglobin: 13.7 g/dL) Tj
+0 -16 Td
 (White Blood Cells: 6.4 x10^9/L) Tj
-/F1 11 Tf
-0 -17 Td
-(Platelets: 245 x10^9/L) Tj
-/F1 11 Tf
-0 -17 Td
-(Cholesterol: 184 mg/dL) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Platelets: 255 x10^9/L) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Notes: Demo values for HealthTrust upload testing.) Tj
+0 -16 Td
+(Metabolic Panel) Tj
+0 -16 Td
+(Fasting glucose: 132 mg/dL) Tj
+0 -16 Td
+(Creatinine: 0.9 mg/dL) Tj
+0 -16 Td
+(ALT: 24 U/L) Tj
+0 -16 Td
+() Tj
+0 -16 Td
+(Comment: Sample lab values for upload and sharing tests.) Tj
 ET
 endstream
 endobj
@@ -69,5 +66,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-1008
+1049
 %%EOF

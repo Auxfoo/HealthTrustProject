@@ -12,46 +12,38 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 685 >>
+<< /Length 711 >>
 stream
 BT
-/F1 18 Tf
+/F1 14 Tf
 72 760 Td
-/F1 16 Tf
 (TEST SAMPLE ONLY - NOT A REAL MEDICAL RECORD) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Document Type: Discharge Summary) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Patient Name: Demo Patient E) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Patient ID: HT-PAT-005) Tj
-/F1 11 Tf
-0 -17 Td
-(Admission Date: 2026-05-12) Tj
-/F1 11 Tf
-0 -17 Td
-(Discharge Date: 2026-05-18) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Admission Date: 2026-05-10) Tj
+0 -16 Td
+(Discharge Date: 2026-05-13) Tj
+0 -16 Td
+(Facility: Demo General Hospital) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Reason for Visit: Routine observation demo case.) Tj
-/F1 11 Tf
-0 -17 Td
-(Treatment: Monitoring and basic laboratory review.) Tj
-/F1 11 Tf
-0 -17 Td
-(Condition at Discharge: Stable in this sample document.) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Reason for admission: Observation for dehydration and dizziness.) Tj
+0 -16 Td
+(Hospital course: Patient improved with oral intake and monitoring.) Tj
+0 -16 Td
+(Discharge condition: Stable.) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Follow-up: Clinic review in two weeks.) Tj
+0 -16 Td
+(Follow-up: Primary care review in 7 days.) Tj
+0 -16 Td
+(Instructions: Return for chest pain, fainting, fever, or worsening symptoms.) Tj
 ET
 endstream
 endobj
@@ -66,5 +58,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-1047
+1072
 %%EOF

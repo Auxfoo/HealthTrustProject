@@ -65,16 +65,43 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
     await storeKeyEnvelope(API_URL, walletAddress, envelope);
   }
 
+  async function resendDoctorKey(target) {
+    const toastId = toast.loading("Resending key...");
+    try {
+      await shareDoctorKey(target);
+      toast.update(toastId, { render: "Key resent", type: "success", isLoading: false, autoClose: 3000 });
+      if (onRefresh) await onRefresh();
+    } catch (error) {
+      toast.update(toastId, {
+        render: error.response?.data?.message || error.message,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+      });
+    }
+  }
+
   async function grantDoctor() {
     if (!ethers.isAddress(doctorAddress)) {
       toast.error("Enter a valid doctor wallet address");
+      return;
+    }
+    if (!aesKey) {
+      toast.error("AES key is not available in this browser. Re-upload or paste the key first.");
+      return;
+    }
+    let envelope;
+    try {
+      envelope = await buildDoctorKeyEnvelope(API_URL, walletAddress, doctorAddress, record, aesKey);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
       return;
     }
     await runTransaction(
       () => grantAccessToDoctor(record.id, doctorAddress),
       "Granting doctor access...",
       "Doctor access granted",
-      () => shareDoctorKey(doctorAddress)
+      () => storeKeyEnvelope(API_URL, walletAddress, envelope)
     );
   }
 
@@ -94,19 +121,55 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
   async function grantInstitution() {
     const institution = institutions.find((item) => String(item.institutionId) === String(institutionId));
     if (!institution) return toast.error("Choose an institution");
+    if (!aesKey) return toast.error("AES key is not available in this browser. Re-upload or paste the key first.");
+    let envelopes = [];
+    try {
+      const doctors = await getInstitutionDoctors(institution.institutionId);
+      if (doctors.length === 0) {
+        toast.error("This institution has no doctors to receive the encrypted key.");
+        return;
+      }
+      envelopes = await buildInstitutionKeyEnvelopes(API_URL, institution, doctors, record, aesKey);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+      return;
+    }
     await runTransaction(
       () => grantAccessToInstitution(record.id, institution.institutionId),
       "Granting institution access...",
       "Institution access granted",
-      async () => {
-        const doctors = await getInstitutionDoctors(institution.institutionId);
-        const envelopes = await buildInstitutionKeyEnvelopes(API_URL, institution, doctors, record, aesKey);
-        await storeKeyEnvelopes(API_URL, walletAddress, envelopes);
-      }
+      () => storeKeyEnvelopes(API_URL, walletAddress, envelopes)
     );
   }
 
+  async function reshareInstitutionKeys() {
+    const institution = institutions.find((item) => String(item.institutionId) === String(institutionId));
+    if (!institution) return toast.error("Choose an institution");
+    if (!aesKey) return toast.error("AES key is not available in this browser. Re-upload or paste the key first.");
+
+    const toastId = toast.loading("Sharing institution keys...");
+    try {
+      const doctors = await getInstitutionDoctors(institution.institutionId);
+      if (doctors.length === 0) throw new Error("This institution has no doctors to receive the encrypted key.");
+      const envelopes = await buildInstitutionKeyEnvelopes(API_URL, institution, doctors, record, aesKey);
+      await storeKeyEnvelopes(API_URL, walletAddress, envelopes);
+      toast.update(toastId, { render: "Institution keys shared", type: "success", isLoading: false, autoClose: 3000 });
+      if (onRefresh) await onRefresh();
+    } catch (error) {
+      toast.update(toastId, {
+        render: error.response?.data?.message || error.message,
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+      });
+    }
+  }
+
   async function revokeInstitution(target = institutionId) {
+    if (!target) {
+      toast.error("Choose an institution");
+      return;
+    }
     await runTransaction(
       () => revokeAccessFromInstitution(record.id, target),
       "Revoking institution access...",
@@ -165,7 +228,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
                     <button className="icon-button ghost" onClick={() => copyWallet(key.recipientWallet)} aria-label="Copy wallet">
                       <Clipboard size={16} />
                     </button>
-                    <button className="icon-button ghost" onClick={() => shareDoctorKey(key.recipientWallet)} aria-label="Resend key">
+                    <button className="icon-button ghost" onClick={() => resendDoctorKey(key.recipientWallet)} aria-label="Resend key">
                       <RotateCw size={16} />
                     </button>
                     <button className="secondary" onClick={() => revokeDoctor(key.recipientWallet)}>
@@ -174,14 +237,21 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
                   </div>
                 </div>
               ))}
-              {directKeys.length === 0 && <span className="muted">No direct key envelopes yet.</span>}
+              {directKeys.length === 0 && (
+                <div className="empty-state">
+                  <Stethoscope size={24} />
+                  <strong>No doctors shared yet</strong>
+                  <span>Doctor key envelopes will appear here after access is granted.</span>
+                </div>
+              )}
             </div>
           </div>
         ) : (
           <div className="form-grid">
             <label>
               Registered institution
-              <select value={institutionId} onChange={(event) => setInstitutionId(event.target.value)}>
+              <select value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} disabled={institutions.length === 0}>
+                {institutions.length === 0 && <option value="">No institutions available</option>}
                 {institutions.map((institution) => (
                   <option key={institution.institutionId} value={institution.institutionId}>
                     {institution.name} ({institution.institutionType})
@@ -190,11 +260,14 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
               </select>
             </label>
             <div className="button-row">
-              <button onClick={grantInstitution}>
+              <button onClick={grantInstitution} disabled={institutions.length === 0}>
                 <KeyRound size={16} />
                 Grant
               </button>
-              <button className="secondary" onClick={() => revokeInstitution()}>
+              <button className="secondary" onClick={reshareInstitutionKeys} disabled={institutions.length === 0}>
+                Share keys
+              </button>
+              <button className="secondary" onClick={() => revokeInstitution()} disabled={institutions.length === 0}>
                 Revoke
               </button>
             </div>
@@ -207,7 +280,13 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
                   </span>
                 </div>
               ))}
-              {institutionKeys.length === 0 && <span className="muted">No institution key envelopes yet.</span>}
+              {institutionKeys.length === 0 && (
+                <div className="empty-state">
+                  <Building2 size={24} />
+                  <strong>No institution sharing yet</strong>
+                  <span>Institution doctor key envelopes will appear here after access is granted.</span>
+                </div>
+              )}
             </div>
           </div>
         )}

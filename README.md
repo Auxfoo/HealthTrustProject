@@ -1,199 +1,300 @@
-# HealthTrust: A Decentralized Medical Record System with Predictive Analytics
+# HealthTrust: Decentralized Medical Records with Predictive Analytics
 
-## Abstract
+HealthTrust is a prototype medical record sharing system for patients, doctors, and healthcare institutions. Patients encrypt records in the browser, upload only encrypted files to IPFS through Pinata, and store record references and permissions on a Sepolia smart contract. Doctors can view records only after the patient grants access and shares the encrypted AES key envelope. Institution admins can manage doctors and see records granted to their institution.
 
-The healthcare system in the Kurdistan region still faces problems in
-safe record sharing between hospitals and clinics. HealthTrust is a
-prototype that combines client-side encryption, IPFS/Pinata storage,
-Sepolia smart-contract permissions, and a diabetes-risk ML service.
-Blockchain does not store the files themselves; encrypted files go to
-IPFS, while only CIDs, permissions, and tamper-resistant audit events go
-on-chain. Patients control on-chain permissions, but revocation cannot
-erase copies already decrypted or downloaded by an authorized doctor.
-The ML service predicts diabetes risk only from eight medical vitals and
-does not receive patient identity or full uploaded medical files by
-default. The result is not a clinical diagnosis.
+The project also includes a FastAPI diabetes prediction service. The prediction feature is not a diagnosis; it is a prototype decision-support feature trained from `diabetes_prediction_dataset.csv`.
 
-## Overview
+## Current Features
 
-HealthTrust is a decentralized medical record system for patients, doctors, and healthcare institutions. Patients encrypt records in the browser, upload the encrypted file to IPFS through Pinata, and store only the IPFS CID on a Sepolia smart contract. Per-record blockchain permissions let a patient grant or revoke access for a single doctor or for an entire registered hospital or clinic. Doctors can view authorized records and use a FastAPI machine learning service to estimate diabetes risk from the Pima Indians Diabetes Dataset features.
+| Role | Can do |
+| --- | --- |
+| Patient | Register profile, upload encrypted PDF/image records, add metadata, archive records, mark important records, grant/revoke doctor access, grant/revoke institution access, resend shared keys, view doctor notes, view care documents, download care documents as PDFs, see notifications, and view audit history. |
+| Doctor | Register profile and MetaMask encryption public key, view only accessible records with matching key envelopes, decrypt/download records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
+| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, and see notifications. |
 
 ## Architecture
 
 ```text
 React Frontend
-  <-> ethers.js (blockchain)
-  <-> REST API
+  | MetaMask, ethers.js, client-side AES encryption
+  | REST API
+  v
 Node/Express Backend
-  <-> Prisma     -> PostgreSQL
-  <-> Pinata API -> IPFS
-  <-> ethers.js  -> Sepolia Blockchain
-  <-> axios      -> FastAPI ML Service
+  | Prisma -> PostgreSQL
+  | Pinata -> IPFS encrypted file storage
+  | axios  -> FastAPI ML service
+  | ethers -> optional contract read/proxy routes
+  v
+Sepolia Smart Contract
+  | record CIDs, permissions, institutions, doctor membership, audit events
+
+FastAPI ML Service
+  | scikit-learn RandomForestClassifier
+  v
+Diabetes prediction and probability
 ```
 
 ## Prerequisites
 
 - Node.js v18+
 - Python 3.10+
+- PostgreSQL v14+
 - MetaMask browser extension
-- PostgreSQL v14+ (local or hosted)
 - Git
-- Hardhat (installed via npm)
+- Sepolia test ETH for wallets that deploy or send transactions
+- Pinata API key and secret
 
-## Setup
+## Environment Files
 
-### Step 1 - Blockchain
+From the project root:
+
+```powershell
+copy backend\.env.example backend\.env
+copy blockchain\.env.example blockchain\.env
+copy frontend\.env.example frontend\.env
+```
+
+Fill in real values. Do not commit `.env` files.
+
+Backend `.env` needs:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/healthtrust?schema=public
+PINATA_API_KEY=your_pinata_api_key
+PINATA_SECRET_API_KEY=your_pinata_secret_api_key
+CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your_api_key
+PRIVATE_KEY=your_backend_wallet_private_key
+PORT=5000
+ML_SERVICE_URL=http://localhost:8000
+```
+
+Blockchain `.env` needs:
+
+```env
+SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your_api_key
+PRIVATE_KEY=your_test_wallet_private_key
+```
+
+Frontend `.env` needs:
+
+```env
+VITE_API_URL=http://localhost:5000
+```
+
+## Install
 
 ```powershell
 cd blockchain
 npm install
-copy ..\backend\.env.example .env
-```
 
-Edit `blockchain\.env` and set `SEPOLIA_RPC_URL` and `PRIVATE_KEY`.
-
-```powershell
-npx hardhat compile
-npx hardhat run scripts/deploy.js --network sepolia
-```
-
-The deploy script writes the deployed contract address and full ABI to `shared/contractConfig.js`.
-
-### Step 2 - Backend
-
-```powershell
 cd ..\backend
 npm install
-copy .env.example .env
-```
 
-Edit `backend\.env` with PostgreSQL, Pinata, Sepolia, contract, and ML service values.
-Create the PostgreSQL database if it does not exist yet:
+cd ..\frontend
+npm install
 
-```powershell
-createdb -U postgres healthtrust
-```
-
-```powershell
-npx prisma generate
-npx prisma migrate dev --name init
-node server.js
-```
-
-### Step 3 - ML Service
-
-```powershell
 cd ..\ml_service
 py -3 -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Download `diabetes.csv` from Kaggle and place it at `ml_service\diabetes.csv`.
+## Database
 
 ```powershell
-py -3 train.py
-uvicorn main:app --reload
+createdb -U postgres healthtrust
+
+cd backend
+npx prisma generate
+npx prisma migrate dev --name init
 ```
 
-### Step 4 - Frontend
+For an existing cloned database setup, `npx prisma migrate deploy` is also fine.
+
+## ML Dataset
+
+Download the Kaggle diabetes prediction dataset:
+
+```text
+https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset
+```
+
+Place the file here:
+
+```text
+ml_service\diabetes_prediction_dataset.csv
+```
+
+The model expects these fields:
+
+```text
+gender, age, hypertension, heart_disease, smoking_history, bmi, HbA1c_level, blood_glucose_level
+```
+
+Train the model:
 
 ```powershell
-cd ..\frontend
-npm install
-npm start
+cd ml_service
+.\.venv\Scripts\activate
+python train.py
 ```
 
-Open the Vite URL printed in the terminal, usually `http://localhost:5173`.
+This creates `ml_service\model.pkl`.
 
-## Environment Variables
+## Smart Contract
 
-Use this content for `backend\.env`. The blockchain folder can reuse `SEPOLIA_RPC_URL` and `PRIVATE_KEY`.
-
-```env
-# PostgreSQL connection string used by Prisma.
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/healthtrust?schema=public
-
-# Pinata API key from pinata.cloud > API Keys.
-PINATA_API_KEY=your_pinata_api_key
-
-# Pinata secret API key from pinata.cloud > API Keys.
-PINATA_SECRET_API_KEY=your_pinata_secret_api_key
-
-# Deployed HealthTrust contract address on Sepolia, also written to shared/contractConfig.js by deploy.js.
-CONTRACT_ADDRESS=0x0000000000000000000000000000000000000000
-
-# Sepolia RPC URL from a provider such as Alchemy or Infura.
-SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your_api_key
-
-# Backend signer wallet private key for optional server-side blockchain proxy routes on Sepolia only.
-PRIVATE_KEY=your_backend_wallet_private_key
-
-# Express server port.
-PORT=5000
-
-# FastAPI ML service base URL.
-ML_SERVICE_URL=http://localhost:8000
-```
-
-## Pinata API Key
-
-1. Go to `https://pinata.cloud`.
-2. Sign up for a free account.
-3. Open API Keys.
-4. Create a key and copy the API key and secret API key into `backend\.env`.
-
-## Free Sepolia ETH
-
-Use either faucet:
-
-- `https://sepoliafaucet.com`
-- `https://www.alchemy.com/faucets/ethereum-sepolia`
-
-## Diabetes Dataset
-
-Download the Pima Indians Diabetes Dataset from:
-
-`https://www.kaggle.com/datasets/uciml/pima-indians-diabetes-database`
-
-Download the file named `diabetes.csv` and place it here:
-
-`ml_service\diabetes.csv`
-
-## Run Commands
+Compile and deploy:
 
 ```powershell
 cd blockchain
 npx hardhat compile
 npx hardhat run scripts/deploy.js --network sepolia
+```
 
-cd ..\ml_service
-py -3 train.py
-uvicorn main:app --reload
+After deployment:
 
-cd ..\backend
-createdb -U postgres healthtrust
-npx prisma generate
-npx prisma migrate dev --name init
+- Copy the deployed address into `backend\.env` as `CONTRACT_ADDRESS`.
+- The deploy script updates `shared\contractConfig.js`, which the frontend imports.
+- If contract code changes, redeploy before browser testing.
+
+## Run The App
+
+Use three terminals.
+
+Terminal 1:
+
+```powershell
+cd backend
 node server.js
+```
 
-cd ..\frontend
+Terminal 2:
+
+```powershell
+cd ml_service
+.\.venv\Scripts\activate
+uvicorn main:app --reload
+```
+
+Terminal 3:
+
+```powershell
+cd frontend
 npm start
 ```
 
-## Usage Walkthrough
+Open:
 
-Patient flow: connect MetaMask, register as a patient, register the MetaMask encryption public key, choose a PDF or image, upload the encrypted record, confirm `addRecord(cid)` in MetaMask, then open Manage Access to grant a doctor wallet or institution access. Patients can review key-sharing status, revoke future access, respond to access requests, edit medical profile details, see notifications, and download doctor care documents as PDFs.
+```text
+http://localhost:5173
+```
 
-Doctor flow: connect MetaMask, register as a doctor, request record access, request institution membership, view records where direct or institution access was granted, decrypt authorized records through encrypted key envelopes, add notes, send care documents to patients, and submit the eight diabetes vitals to view a non-clinical diabetes risk result.
+## Sample Records
 
-Institution flow: connect MetaMask, register as an institution admin, register a hospital or clinic on-chain, approve or reject doctor membership requests, manage doctors, request patient record access, view shared-record key envelopes, and monitor notifications.
+Fake test PDFs are available in `sample_records`:
+
+- `sample_diabetes_vitals.pdf`
+- `sample_blood_test_report.pdf`
+- `sample_radiology_report.pdf`
+- `sample_prescription.pdf`
+- `sample_discharge_summary.pdf`
+- `sample_clinic_visit_note.pdf`
+
+Use `sample_diabetes_vitals.pdf` to test doctor prediction auto-fill. Auto-fill works for readable text PDFs, not scanned image-only PDFs.
+
+## Run Tests
+
+Automated checks:
+
+```powershell
+cd backend
+npm test
+```
+
+```powershell
+cd ..\blockchain
+npm test
+```
+
+```powershell
+cd ..\frontend
+npm run build
+```
+
+```powershell
+cd ..\ml_service
+.\.venv\Scripts\activate
+python train.py
+```
+
+ML prediction smoke test:
+
+```powershell
+cd ml_service
+@'
+import main
+main.load_model()
+payload = main.DiabetesInput(
+    gender="Female",
+    age=54,
+    hypertension=0,
+    heart_disease=0,
+    smoking_history="never",
+    bmi=27.32,
+    HbA1c_level=6.6,
+    blood_glucose_level=140,
+)
+print(main.predict(payload))
+'@ | .\.venv\Scripts\python.exe -
+```
+
+Expected output shape:
+
+```text
+{'prediction': 0, 'probability': 0.08}
+```
+
+Testing evidence and manual test cases are stored in `test`.
+
+## Manual Browser Test Flow
+
+Use at least three MetaMask accounts: one patient, one doctor, and one institution admin. Each account needs Sepolia ETH for transactions.
+
+1. Register institution admin and create an institution.
+2. Register doctor and make sure the doctor registers a MetaMask encryption public key.
+3. Register patient and upload one sample PDF.
+4. Patient opens the record access modal and grants the doctor access.
+5. Doctor opens Records and clicks View. The file should decrypt/download.
+6. Patient grants institution access to the same record.
+7. Admin checks Shared records.
+8. Doctor requests institution membership.
+9. Admin approves the doctor in Doctor Requests.
+10. Patient uses Share keys if a newly added institution doctor needs a key envelope.
+11. Doctor adds a note and sends a care document linked to the record.
+12. Patient confirms Notes and Documents tabs show content.
+13. Doctor views `sample_diabetes_vitals.pdf`; prediction fields should auto-fill.
+14. Doctor submits prediction and confirms History is updated.
+15. Admin removes the doctor and doctor receives a notification.
+
+## Test Evidence Folder
+
+```text
+test/
+  README.md
+  unit/unit-test-results.md
+  integration/integration-test-results.md
+  system/system-test-cases.md
+  usability/usability-test-plan.md
+```
 
 ## Known Limitations
 
-- Wallet loss or lost AES/key envelope material can mean permanent record loss.
-- Revocation stops future authorized access; it cannot delete files already decrypted or downloaded.
-- Sepolia testnet only, not production-ready.
-- ML output is diabetes-risk support only, not a medical diagnosis.
-- Institution admins are self-registered with no real-world KYC.
-- No mobile app or formal security audit yet.
+- Sepolia is a testnet; this is not production-ready.
+- Revocation blocks future authorized access but cannot erase files already decrypted or downloaded.
+- A doctor with legitimate access can copy decrypted content.
+- Wallet loss can make records or key-sharing material unrecoverable.
+- Pinata/IPFS gateway availability affects retrieval.
+- Institution admins are self-registered; there is no real-world KYC.
+- The ML result is not a clinical diagnosis.
+- No formal security audit has been performed.

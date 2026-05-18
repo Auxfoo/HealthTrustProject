@@ -1,5 +1,34 @@
 const prisma = require("../lib/prisma");
 const { createNotification } = require("../lib/notifications");
+const { ethers } = require("ethers");
+const contractConfig = require("../../shared/contractConfig");
+
+const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || contractConfig.CONTRACT_ADDRESS;
+const CONTRACT_ABI = contractConfig.CONTRACT_ABI || [];
+
+function getReadContract() {
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL));
+}
+
+function serializeRecord(record) {
+  return {
+    id: Number(record.id),
+    uploadedBy: record.uploadedBy.toLowerCase(),
+  };
+}
+
+async function validateDoctorRecordAccess(recordId, patientWallet, doctorWallet) {
+  const contract = getReadContract();
+  const records = await contract.getAllRecords();
+  const record = records.map(serializeRecord).find((item) => item.id === Number(recordId));
+  if (!record) return { ok: false, status: 404, message: "Record not found on-chain" };
+  if (record.uploadedBy !== patientWallet.toLowerCase()) {
+    return { ok: false, status: 400, message: "Patient wallet does not match the selected record" };
+  }
+  const hasAccess = await contract.hasAccess(Number(recordId), doctorWallet);
+  if (!hasAccess) return { ok: false, status: 403, message: "Doctor does not have access to this record" };
+  return { ok: true };
+}
 
 exports.upsertNote = async (req, res) => {
   try {
@@ -9,6 +38,9 @@ exports.upsertNote = async (req, res) => {
     }
 
     const doctorWallet = req.authWallet.toLowerCase();
+    const access = await validateDoctorRecordAccess(recordId, patientWallet, doctorWallet);
+    if (!access.ok) return res.status(access.status).json({ message: access.message });
+
     const row = await prisma.doctorNote.upsert({
       where: { recordId_doctorWallet: { recordId: Number(recordId), doctorWallet } },
       update: { patientWallet: patientWallet.toLowerCase(), status, note },

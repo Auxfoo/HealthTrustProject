@@ -1,4 +1,19 @@
 const prisma = require("../lib/prisma");
+const { createNotification } = require("../lib/notifications");
+
+exports.create = async (req, res) => {
+  try {
+    const { wallet, type = "system", title, message } = req.body;
+    if (!wallet || !title) {
+      return res.status(400).json({ message: "wallet and title are required" });
+    }
+
+    const notification = await createNotification(wallet, type, title, message);
+    res.status(201).json(notification);
+  } catch (error) {
+    res.status(500).json({ message: "Unable to create notification", error: error.message });
+  }
+};
 
 exports.getMine = async (req, res) => {
   try {

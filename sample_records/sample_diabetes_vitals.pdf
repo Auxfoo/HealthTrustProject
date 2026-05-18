@@ -12,58 +12,42 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 746 >>
+<< /Length 595 >>
 stream
 BT
-/F1 18 Tf
+/F1 14 Tf
 72 760 Td
-/F1 16 Tf
 (TEST SAMPLE ONLY - NOT A REAL MEDICAL RECORD) Tj
-/F1 11 Tf
-0 -17 Td
-(Document Type: Diabetes Vitals Sheet) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Document Type: Diabetes Risk Inputs) Tj
+0 -16 Td
 (Patient Name: Demo Patient B) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Patient ID: HT-PAT-002) Tj
-/F1 11 Tf
-0 -17 Td
-(Date: 2026-05-18) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Date: 2026-05-19) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Pregnancies: 2) Tj
-/F1 11 Tf
-0 -17 Td
-(Glucose: 148) Tj
-/F1 11 Tf
-0 -17 Td
-(BloodPressure: 72) Tj
-/F1 11 Tf
-0 -17 Td
-(SkinThickness: 35) Tj
-/F1 11 Tf
-0 -17 Td
-(Insulin: 94) Tj
-/F1 11 Tf
-0 -17 Td
-(BMI: 33.6) Tj
-/F1 11 Tf
-0 -17 Td
-(DiabetesPedigreeFunction: 0.627) Tj
-/F1 11 Tf
-0 -17 Td
-(Age: 50) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Gender: Female) Tj
+0 -16 Td
+(Age: 54) Tj
+0 -16 Td
+(Hypertension: No) Tj
+0 -16 Td
+(Heart disease: No) Tj
+0 -16 Td
+(Smoking history: never) Tj
+0 -16 Td
+(BMI: 27.32) Tj
+0 -16 Td
+(HbA1c level: 6.6) Tj
+0 -16 Td
+(Blood glucose level: 140) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Notes: These values can also be entered in the ML prediction form.) Tj
+0 -16 Td
+(Notes: Values are for testing the HealthTrust prediction form only.) Tj
 ET
 endstream
 endobj
@@ -78,5 +62,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-1108
+956
 %%EOF

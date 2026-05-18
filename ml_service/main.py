@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import joblib
-import numpy as np
+import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -24,14 +24,14 @@ model = None
 
 
 class DiabetesInput(BaseModel):
-    Pregnancies: int
-    Glucose: int
-    BloodPressure: int
-    SkinThickness: int
-    Insulin: int
-    BMI: float
-    DiabetesPedigreeFunction: float
-    Age: int
+    gender: str
+    age: float
+    hypertension: int
+    heart_disease: int
+    smoking_history: str
+    bmi: float
+    HbA1c_level: float
+    blood_glucose_level: int
 
 
 @app.on_event("startup")
@@ -52,17 +52,19 @@ def predict(payload: DiabetesInput):
     if model is None:
         raise HTTPException(status_code=503, detail="Model is not loaded")
 
-    features = np.array(
-        [[
-            payload.Pregnancies,
-            payload.Glucose,
-            payload.BloodPressure,
-            payload.SkinThickness,
-            payload.Insulin,
-            payload.BMI,
-            payload.DiabetesPedigreeFunction,
-            payload.Age,
-        ]]
+    features = pd.DataFrame(
+        [
+            {
+                "gender": payload.gender,
+                "age": payload.age,
+                "hypertension": payload.hypertension,
+                "heart_disease": payload.heart_disease,
+                "smoking_history": payload.smoking_history,
+                "bmi": payload.bmi,
+                "HbA1c_level": payload.HbA1c_level,
+                "blood_glucose_level": payload.blood_glucose_level,
+            }
+        ]
     )
 
     prediction = int(model.predict(features)[0])

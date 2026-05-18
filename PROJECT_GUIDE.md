@@ -2,51 +2,38 @@
 
 ## Abstract
 
-The healthcare system in the Kurdistan region still faces problems in
-safe record sharing between hospitals and clinics. HealthTrust is a
-prototype that combines client-side encryption, IPFS/Pinata storage,
-Sepolia smart-contract permissions, and a diabetes-risk ML service.
-Blockchain does not store the files themselves; encrypted files go to
-IPFS, while only CIDs, permissions, and tamper-resistant audit events go
-on-chain. Patients control on-chain permissions, but revocation cannot
-erase copies already decrypted or downloaded by an authorized doctor.
-The ML service predicts diabetes risk only from eight medical vitals and
-does not receive patient identity or full uploaded medical files by
-default. The result is not a clinical diagnosis.
+HealthTrust is a prototype decentralized medical record system for patients, doctors, hospitals, and clinics. Patients encrypt records in the browser, upload only encrypted files to IPFS through Pinata, and store record references and permission state on a Sepolia smart contract. Doctors and institution doctors can view a record only when blockchain access and an encrypted AES key envelope are both available. The system also includes a FastAPI diabetes prediction service for non-diagnostic predictive analytics.
 
-## 1. PROJECT OVERVIEW
+## 1. Project Overview
 
-HealthTrust is a decentralized medical record system designed for patients, doctors, hospitals, and clinics. In plain English, it gives patients a way to upload medical records securely, decide exactly who can access each record, and keep a permanent history of permission changes. It also gives doctors a simple diabetes prediction tool based on eight medical vitals. The project combines a React frontend, a Node.js backend, a Solidity smart contract, IPFS storage through Pinata, PostgreSQL identity/workflow records managed through Prisma, and a Python FastAPI machine learning service.
+HealthTrust gives patients control over who can access each medical record. The patient uploads a PDF or image, the browser encrypts it with a random AES key, the backend pins the encrypted content to IPFS, and the smart contract stores only the resulting CID and permission state.
 
-Current restored workflows include patient access overview, encrypted key envelopes, access requests, doctor notes, doctor-created care documents, patient PDF download for care documents, institution shared-record view, doctor membership requests, notifications, metadata editing, and prediction history. The system uses signed wallet sessions for backend routes so ordinary UI actions do not trigger MetaMask every time.
+The current role workflows are:
 
-The healthcare context in the Kurdistan region creates a practical need for this type of system. Patient records are often separated between hospitals, clinics, and doctors. Sharing can be slow, duplicated, paper-based, or dependent on manual trust. A patient may visit one clinic, then another hospital, and the second provider may not have the earlier record. This can delay treatment and create confusion. HealthTrust addresses this by giving the patient a digital record list and access controls that can be checked by any connected system.
+| Role | Main workflows |
+| --- | --- |
+| Patient | Upload encrypted records, edit metadata, archive records, mark important records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, view doctor notes, view care documents, download care-document PDFs, view notifications, and view audit history. |
+| Doctor | Register encryption public key, view accessible records, decrypt records through MetaMask key envelopes, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
+| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, and inspect shared key counts. |
 
-Blockchain was chosen over a traditional database for the trust layer. A normal database can be changed by administrators, attacked by insiders, or silently modified if the server is compromised. Blockchain is not used here to store private medical files. Instead, it stores record references, access permissions, institution registration, doctor membership, and audit events. This makes permission history tamper-resistant and transparent. The patient does not need to trust a single hospital server to remember who was granted or revoked.
+The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
 
-IPFS was chosen instead of storing files directly on-chain because medical files are large and blockchains are expensive. Storing a PDF or image directly inside a smart contract would cost too much gas and would permanently expose data in an unsuitable location. IPFS stores content by its cryptographic content identifier, called a CID. If the encrypted file changes, the CID changes. The blockchain stores only the CID, which proves which encrypted file belongs to the record.
+## 2. System Architecture
 
-Machine learning was added to make the system more useful to doctors. The ML service predicts diabetes risk using the Pima Indians Diabetes Dataset and a RandomForestClassifier model. The model is served separately through FastAPI. It does not receive raw uploaded medical records. Instead, a doctor manually enters eight vitals into a prediction form. This supports the abstract’s idea of analyzing medical data without revealing personal details, because the prediction is based only on entered numerical features, not decrypted files or patient identity.
-
-## 2. SYSTEM ARCHITECTURE
-
-HealthTrust uses multiple services that each have a focused responsibility. The frontend handles the user interface, MetaMask connection, client-side encryption, and user-confirmed blockchain transactions. The backend handles PostgreSQL profiles through Prisma, Pinata uploads, API routing, and proxying prediction requests. The smart contract stores decentralized records and permissions. The ML service handles diabetes prediction. PostgreSQL stores only user and institution metadata, not medical records.
-
-ASCII architecture diagram:
-
+```text
 React Frontend
   | MetaMask wallet connection
   | ethers.js contract calls
-  | crypto-js AES encryption and decryption
+  | client-side AES encryption/decryption
   | REST API calls
   v
 Node.js / Express Backend
   | Prisma
   v
-PostgreSQL Users and Institutions
+PostgreSQL profiles and workflow metadata
 
 Node.js / Express Backend
-  | Pinata REST API v1
+  | Pinata REST API
   v
 IPFS encrypted file storage
 
@@ -54,9 +41,9 @@ React Frontend and Backend
   | ethers.js
   v
 Sepolia Blockchain
-  | HealthTrust.sol smart contract
+  | HealthTrust.sol
   v
-Records, access permissions, institution membership, audit events
+Record CIDs, permissions, institutions, doctor membership, audit events
 
 Node.js / Express Backend
   | axios
@@ -65,255 +52,405 @@ FastAPI ML Service
   | scikit-learn RandomForestClassifier
   v
 Diabetes prediction and probability
+```
 
-Patient upload flow: the patient connects MetaMask, chooses a PDF or image, and the browser creates an AES key for that record. The file is encrypted before it leaves the browser. The encrypted text blob is sent to the Express backend. The backend pins it to IPFS through Pinata and receives a CID. The frontend then calls addRecord on the smart contract with that CID. The contract stores the record ID, CID, owner address, and timestamp, then emits RecordAdded. The AES key can be wrapped into an encrypted key envelope for each approved doctor.
+## 3. Main Data Flows
 
-Patient grants doctor access flow: the patient opens the access modal for a specific record. The patient enters a doctor wallet address and confirms the grant transaction in MetaMask. The smart contract checks that the caller owns the record. If valid, it updates the recordId to doctorAddress permission mapping and emits AccessGrantedToDoctor. Revocation works the same way, except the mapping value becomes false and AccessRevokedFromDoctor is emitted.
+Patient upload flow: the patient connects MetaMask, chooses a PDF or image, and the browser generates a random AES key. The file is encrypted before upload. The encrypted blob is sent to the backend, pinned to IPFS through Pinata, and returned as a CID. The frontend then calls `addRecord(cid)` on the smart contract.
 
-Doctor views and decrypts flow: the doctor connects MetaMask and opens the accessible records tab. The frontend reads all records from the smart contract and checks hasAccess for the doctor wallet. If the doctor has direct access or belongs to an institution that was granted access, the record appears. The doctor fetches the encrypted blob from the IPFS gateway using the CID. Because encryption is client-side and the backend never stores plaintext, the doctor needs an encrypted key envelope created for that wallet. The frontend asks MetaMask to decrypt the envelope, then decrypts the file in the browser and opens it.
+Patient grants doctor access: the patient opens a record's access modal, enters a doctor wallet, and confirms the smart contract transaction in MetaMask. The frontend also encrypts the record AES key for that doctor using the doctor's registered MetaMask encryption public key. The doctor can view the record only when on-chain access and the key envelope both exist.
 
-Doctor prediction flow: the doctor opens the diabetes prediction tab and enters Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, and Age. The frontend posts the data to the backend route. The backend forwards the request to the FastAPI service. FastAPI loads model.pkl, runs the RandomForestClassifier prediction, and returns prediction and probability. The frontend displays Diabetic or Non-Diabetic and a green, yellow, or red risk meter.
+Patient grants institution access: the patient chooses an institution from the access modal. The smart contract grants the institution access to that record. The frontend creates encrypted key envelopes for doctors currently in the institution. If a new doctor joins later, the patient can use Share keys to send the AES key envelope to that doctor.
 
-## 3. BLOCKCHAIN & SMART CONTRACT
+Doctor views and decrypts a record: the doctor opens Records, clicks View, and MetaMask decrypts the key envelope for the connected doctor wallet. The browser uses the decrypted AES key to decrypt and download the IPFS file. The backend and Pinata never receive plaintext.
 
-A smart contract is a program stored on a blockchain. In HealthTrust, the smart contract is the authority for medical record ownership, per-record permissions, institution registration, and institution doctor membership. It is used because these actions need a transparent audit trail and should not depend only on a central server.
+Doctor notes and care documents: the doctor chooses an accessible record from a dropdown, adds a note, or sends a care document. Patients can see notes and care documents in their dashboard. Care documents are linked to existing records and stored in PostgreSQL; they do not create a new blockchain record.
 
-Sepolia is an Ethereum testnet. It behaves like Ethereum but uses test ETH with no real financial value. HealthTrust uses Sepolia instead of mainnet because this is an academic and prototype system. Testing on mainnet would cost real money and would be inappropriate before audits, security review, and production planning.
+Doctor prediction flow: the doctor enters diabetes inputs manually or auto-fills them from a readable diabetes vitals PDF. The frontend posts to the backend, the backend forwards to FastAPI, and FastAPI returns prediction and probability.
 
-MetaMask is the browser wallet used by patients, doctors, and institution admins. It stores the user’s private key locally, exposes the wallet address to the frontend after approval, signs messages for encryption key derivation, and signs blockchain transactions. When a user grants access, registers an institution, adds a doctor, or uploads a CID, MetaMask shows a confirmation prompt.
+## 4. Blockchain and Smart Contract
 
-Hardhat is the development framework used to compile and deploy the Solidity contract. It reads the deployment wallet private key and Sepolia RPC URL from environment variables, deploys HealthTrust.sol, and writes the deployed address and ABI to shared/contractConfig.js. The ABI is required by ethers.js so the frontend and backend know how to call the contract.
+The smart contract is the trust layer. It does not store private medical files. It stores record CIDs, record ownership, doctor permissions, institution permissions, institution registration, doctor membership, and audit events.
 
-OpenZeppelin Ownable is included as a trusted access-control base contract. In the current prototype, the main permissions are based on record owner and institution admin checks. Ownable is included for standard ownership support and future administrative extensions, such as emergency pauses or verified institution approval.
-
-| Function | Plain-English explanation | Gas cost |
+| Function | Purpose | Cost |
 | --- | --- | --- |
-| addRecord | Stores a new CID for the patient who submits the transaction. | Costs gas |
-| addRecordForPatient | Lets a doctor create a patient-owned record, such as a prescription or follow-up document. | Costs gas |
-| grantAccessToDoctor | Gives one doctor wallet access to one record. | Costs gas |
-| revokeAccessFromDoctor | Removes one doctor wallet’s access to one record. | Costs gas |
-| grantAccessToInstitution | Gives all doctors in one institution access to one record. | Costs gas |
-| revokeAccessFromInstitution | Removes institution access from one record. | Costs gas |
-| registerInstitution | Creates a hospital or clinic with the caller as admin. | Costs gas |
-| addDoctorToInstitution | Adds a doctor wallet to an institution. | Costs gas |
-| removeDoctorFromInstitution | Removes a doctor wallet from an institution. | Costs gas |
-| hasAccess | Checks direct and institution-based access for a doctor. | Free view call |
-| getMyRecords | Returns records uploaded by the caller. | Free view call |
-| getInstitutionDoctors | Returns doctor wallets in an institution. | Free view call |
-| getAllInstitutions | Returns registered institutions. | Free view call |
-| getAllRecords | Returns all record references for frontend access filtering. | Free view call |
+| `addRecord` | Stores a new CID for the patient caller. | Gas |
+| `addRecordForPatient` | Contract support for clinician-created patient-owned records. The current care-document UI does not use this for normal care docs. | Gas |
+| `grantAccessToDoctor` | Grants one doctor wallet access to one record. | Gas |
+| `revokeAccessFromDoctor` | Revokes one doctor wallet's access to one record. | Gas |
+| `grantAccessToInstitution` | Grants an institution access to one record. | Gas |
+| `revokeAccessFromInstitution` | Revokes institution access to one record. | Gas |
+| `registerInstitution` | Registers a hospital or clinic. | Gas |
+| `addDoctorToInstitution` | Adds a doctor wallet to an institution. | Gas |
+| `removeDoctorFromInstitution` | Removes a doctor wallet from an institution. | Gas |
+| `hasAccess` | Checks direct or institution-based access for a doctor. | Free view |
+| `getMyRecords` | Returns caller-owned records. | Free view |
+| `getInstitutionDoctors` | Returns doctors in an institution. | Free view |
+| `getAllInstitutions` | Returns registered institutions. | Free view |
+| `getAllRecords` | Returns record references for frontend filtering. | Free view |
 
-On-chain events matter because they create a tamper-resistant audit trail. When access is granted or revoked, the event is stored in blockchain history. The patient dashboard can read these events and show what happened, which target was involved, and which record was affected.
+Revocation stops future authorized access, but it cannot erase copies already downloaded or decrypted by an authorized user.
 
-Per-record access control means permission is not global. A patient can grant Doctor A access to Record 1 but not Record 2. This is more precise than giving a doctor full access to every patient file. The institution model extends this by letting a patient grant an entire hospital or clinic access to one record. Any doctor who is a current member of that institution can pass the hasAccess check for that record.
+## 5. IPFS and File Storage
 
-## 4. IPFS & FILE STORAGE
+IPFS stores encrypted files by CID. Pinata keeps the encrypted content available. HealthTrust stores only encrypted content in IPFS and only CIDs on-chain. This keeps large files off-chain and keeps plaintext away from the backend.
 
-IPFS is a distributed file storage network. Instead of using a normal URL based on server location, IPFS identifies a file by its content. That identifier is called a CID. If the file content changes, the CID changes. This makes IPFS useful for record integrity because the blockchain can store the CID and later verify that the same encrypted content is being retrieved.
+Files are encrypted before they leave the browser. The backend receives only encrypted text blobs and forwards them to Pinata. A changed encrypted file produces a different CID.
 
-Pinata is an IPFS pinning service. Pinning means asking an IPFS provider to keep the file available. HealthTrust uses Pinata REST API v1 because it gives a simple HTTP upload interface from the backend. The backend receives the encrypted blob and sends it to Pinata. Pinata returns the IPFS CID.
+## 6. Encryption and Key Sharing
 
-Files are not stored directly on the blockchain because blockchains are public, expensive, and not designed for large file storage. Even encrypted files would be costly to store on-chain. HealthTrust stores only the CID on-chain and keeps the encrypted file in IPFS.
+AES is used for file encryption. Each uploaded record receives a random AES key in the browser.
 
-When a patient uploads a file, the browser first encrypts the PDF or image with AES. The encrypted string is sent to the backend as multipart form data. Multer reads the uploaded file into memory. The backend uses axios and form-data to send it to Pinata. Pinata pins the file and returns a CID. The frontend then calls the smart contract to store that CID as a record.
+MetaMask encryption public keys are used for key envelopes:
 
-When a doctor downloads a file, the frontend fetches the encrypted content from an IPFS gateway using the CID. The gateway and Pinata only see encrypted content. The doctor’s browser then decrypts it using the patient-provided AES key or signature. If the patient loses the wallet and cannot reproduce or share the needed key material, record recovery can become impossible by design.
+1. The doctor registers an encryption public key.
+2. The patient grants access.
+3. The frontend encrypts the AES key for the doctor.
+4. The backend stores only the encrypted key envelope.
+5. The doctor clicks View.
+6. MetaMask decrypts the envelope for the connected doctor wallet.
+7. The browser decrypts the file locally.
 
-## 5. ENCRYPTION
+The backend never stores plaintext records or plaintext AES keys. If key material is lost and no envelope exists for an authorized user, record recovery may not be possible.
 
-AES encryption is a symmetric encryption method. Symmetric means the same secret key is used to encrypt and decrypt. In HealthTrust, AES is used through crypto-js in the browser. The file is converted into bytes, encrypted, and only then uploaded.
+## 7. Machine Learning
 
-Encryption happens client-side because the server should never see private medical records in plaintext. If encryption happened on the backend, the backend would temporarily receive sensitive medical files. That would weaken the security model and make server compromise more dangerous.
+The ML service uses the Kaggle diabetes prediction dataset:
 
-The AES key is derived from the patient wallet address and a MetaMask signature. The patient signs a fixed message. That signature is combined with the wallet address and hashed into a key string. This means the key is tied to control of the patient’s wallet. The private key itself is never exposed to the application.
+```text
+ml_service\diabetes_prediction_dataset.csv
+```
 
-The server never sees the unencrypted file because the browser encrypts before upload. Pinata also cannot read the original file because it receives the encrypted blob, not the PDF or image. The system still depends on safe key handling. If a patient shares the AES key or signature with a doctor, that doctor can decrypt the record they receive.
+Expected features:
 
-## 6. MACHINE LEARNING
-
-The Pima Indians Diabetes Dataset is a public diabetes classification dataset commonly used for beginner and academic machine learning projects. It contains rows of numerical medical features and an Outcome column showing whether diabetes was present in the dataset label.
-
-| Feature | Plain-English meaning |
+| Feature | Meaning |
 | --- | --- |
-| Pregnancies | Number of pregnancies recorded for the patient. |
-| Glucose | Plasma glucose concentration measurement. |
-| BloodPressure | Diastolic blood pressure measurement. |
-| SkinThickness | Triceps skin fold thickness. |
-| Insulin | Two-hour serum insulin measurement. |
-| BMI | Body mass index. |
-| DiabetesPedigreeFunction | Family-history-related diabetes score. |
-| Age | Age in years. |
+| `gender` | Gender category from the dataset. |
+| `age` | Age in years. |
+| `hypertension` | 0 for no, 1 for yes. |
+| `heart_disease` | 0 for no, 1 for yes. |
+| `smoking_history` | Smoking category such as never, current, former, ever, not current, or No Info. |
+| `bmi` | Body mass index. |
+| `HbA1c_level` | Hemoglobin A1c level. |
+| `blood_glucose_level` | Blood glucose level. |
 
-RandomForestClassifier is a scikit-learn model made of many decision trees. Each tree makes a prediction, and the forest combines those predictions. This often works well for tabular medical-style datasets because it can model non-linear relationships between features.
+`train.py` trains a `RandomForestClassifier` pipeline with one-hot encoding for categorical fields and saves `model.pkl`. `main.py` loads `model.pkl` and exposes `/predict`.
 
-model.pkl is the saved model file. The train.py script loads diabetes.csv, splits it into training and test sets, trains the RandomForestClassifier, prints accuracy, and saves the model with joblib. Joblib is a Python library commonly used to save and load scikit-learn models efficiently. FastAPI loads model.pkl when the service starts.
+Latest local training result:
 
-The prediction output is 0 or 1. In this project, 0 means Non-Diabetic and 1 means Diabetic. The probability is a number from 0.0 to 1.0 representing the model’s estimated probability for the diabetic class. The frontend converts it to a percentage and displays a color-coded risk meter.
+```text
+Accuracy: 0.9689
+```
 
-This is not a medical diagnosis. The model is trained on a small public dataset, is not clinically certified, and should not replace a doctor’s judgment or laboratory testing. It is included to demonstrate predictive analytics. It connects to the abstract’s privacy wording because the doctor enters vitals manually and no raw uploaded records are fed into the ML model.
+This result is not a diagnosis and should not replace medical judgment.
 
-## 7. BACKEND API
+## 8. Backend API
 
-Express is the Node.js web framework used for the backend. The backend connects the frontend to PostgreSQL through Prisma, Pinata, optional blockchain proxy routes, and the ML service. It also keeps the frontend from needing Pinata API secrets.
+| Method | Route | Purpose |
+| --- | --- | --- |
+| `POST` | `/api/users/register` | Save or update user profile and encryption public key. |
+| `GET` | `/api/users/:wallet` | Fetch profile by wallet. |
+| `POST` | `/api/records/upload` | Upload encrypted file blob to Pinata/IPFS. |
+| `GET` | `/api/records/:wallet` | Fetch blockchain records for a patient wallet. |
+| `POST` | `/api/records/metadata` | Save record metadata. |
+| `GET` | `/api/records/metadata/bulk` | Fetch metadata for multiple record IDs. |
+| `POST` | `/api/record-keys` | Store encrypted AES key envelope. |
+| `GET` | `/api/record-keys/:recordId` | Fetch signed wallet's key envelope. |
+| `GET` | `/api/record-keys/owned` | Fetch key envelopes for records owned by signed wallet. |
+| `GET` | `/api/record-keys/institution/:id` | Fetch institution key envelopes. |
+| `DELETE` | `/api/record-keys` | Delete key envelopes after revoke. |
+| `POST` | `/api/notes` | Save doctor note. |
+| `GET` | `/api/notes` | Fetch notes involving signed wallet. |
+| `POST` | `/api/doctor-documents` | Send care document to patient. |
+| `GET` | `/api/doctor-documents` | Fetch care documents involving signed wallet. |
+| `POST` | `/api/membership-requests` | Doctor requests institution membership. |
+| `GET` | `/api/membership-requests` | Fetch membership requests for signed wallet. |
+| `PATCH` | `/api/membership-requests/:id` | Approve or reject doctor membership. |
+| `GET` | `/api/institutions` | Return registered institutions. |
+| `POST` | `/api/institutions/register` | Save institution metadata. |
+| `GET` | `/api/institutions/:id/doctors` | Return doctors in institution. |
+| `POST` | `/api/predict` | Forward diabetes prediction to FastAPI and save history. |
+| `GET` | `/api/predict/history` | Fetch signed doctor's prediction history. |
+| `GET` | `/api/notifications` | Fetch signed wallet notifications. |
+| `POST` | `/api/notifications` | Create a notification, such as doctor removal. |
+| `PATCH` | `/api/notifications/:id/read` | Mark notification as read. |
+| `GET/POST/PATCH` | `/api/access-requests` | Legacy access-request API. Current doctor UI uses patient-granted access from records instead. |
 
-| Method | Route | Purpose | Caller |
-| --- | --- | --- | --- |
-| POST | /api/users/register | Save or update a user profile. | Frontend registration page |
-| GET | /api/users/:wallet | Fetch a profile by wallet. | WalletContext |
-| POST | /api/records/upload | Upload encrypted file blob to Pinata/IPFS. | Patient dashboard |
-| GET | /api/records/:wallet | Fetch blockchain records for a patient wallet. | Patient dashboard |
-| POST | /api/access/grant/doctor | Optional backend proxy for granting doctor access. | API clients or demos |
-| POST | /api/access/revoke/doctor | Optional backend proxy for revoking doctor access. | API clients or demos |
-| POST | /api/access/grant/institution | Optional backend proxy for granting institution access. | API clients or demos |
-| POST | /api/access/revoke/institution | Optional backend proxy for revoking institution access. | API clients or demos |
-| GET | /api/access/check | Check whether a doctor has access to a record. | Frontend or API clients |
-| POST | /api/institutions/register | Save institution metadata and optionally proxy registration. | Registration and institution dashboard |
-| POST | /api/institutions/addDoctor | Optional backend proxy for adding doctors. | API clients or demos |
-| POST | /api/institutions/removeDoctor | Optional backend proxy for removing doctors. | API clients or demos |
-| GET | /api/institutions | Return registered institutions from PostgreSQL. | Registration, modal, dashboard |
-| GET | /api/institutions/:id/doctors | Return institution doctors from the smart contract. | Institution dashboard |
-| POST | /api/predict | Forward diabetes vitals to FastAPI. | Doctor dashboard |
-| GET | /api/predict/history | Return saved prediction history for the signed doctor. | Doctor dashboard |
-| POST | /api/records/metadata | Save record title, category, provider, notes, and flags. | Patient or creating doctor |
-| GET | /api/records/metadata/bulk | Fetch metadata for several record IDs. | Dashboards |
-| POST | /api/record-keys | Store an encrypted AES key envelope. | Patient or creating doctor |
-| GET | /api/record-keys/:recordId | Fetch the signed wallet's key envelope for a record. | Doctor or patient |
-| GET | /api/access-requests | Fetch patient/doctor/institution access requests. | Signed user |
-| POST | /api/access-requests | Create an access request. | Doctor or institution |
-| PATCH | /api/access-requests/:id | Approve or reject access request status. | Patient |
-| POST | /api/notes | Save a doctor note for a record. | Doctor |
-| GET | /api/notes | Fetch notes involving the signed wallet. | Patient or doctor |
-| POST | /api/membership-requests | Request to join an institution. | Doctor |
-| PATCH | /api/membership-requests/:id | Approve or reject doctor membership. | Institution admin |
-| POST | /api/doctor-documents | Send a care document to a patient. | Doctor |
-| GET | /api/doctor-documents | Fetch care documents involving the signed wallet. | Patient or doctor |
-| GET | /api/notifications | Fetch signed wallet notifications. | Signed user |
+Most protected routes require signed wallet authentication headers.
 
-Prisma is the database toolkit used to define the PostgreSQL schema and query the database from Node.js. It defines User and Institution models, validates role and institution type enums at the schema layer, and generates a type-aware client used by the controllers. Multer handles multipart file uploads. In this system it stores encrypted uploads in memory long enough for the backend to forward them to Pinata.
+## 9. Frontend
 
-ethers.js is used server-side for read calls and optional proxy write routes. Some contract calls go through the backend because the backend route list requires those endpoints. However, user-sensitive writes are done directly from the frontend through MetaMask so the patient or institution admin sees and approves the transaction.
+Main frontend files:
 
-## 8. FRONTEND
-
-The frontend is a React app. Register.js lets a wallet owner create a patient, doctor, or institution admin profile and register an encryption public key for secure key envelopes. PatientDashboard.js lets patients upload encrypted records, view their own records, manage access, respond to requests, edit metadata/profile details, view doctor care documents, download care documents as PDFs, see notifications, and view audit events. DoctorDashboard.js lets doctors request access, join institutions, decrypt accessible records, save notes, create care documents, and submit diabetes predictions. InstitutionDashboard.js lets institution admins register their institution, manage doctors, approve membership requests, request patient record access, and view institution-shared records.
-
-Navbar.js shows the connected wallet, user name, and role. RecordCard.js displays one record with CID and timestamp. AccessModal.js contains doctor and institution tabs for grant and revoke actions. PredictionForm.js renders the eight input fields. RiskMeter.js renders the probability bar.
-
-WalletContext.js stores walletAddress, userProfile, role, connection state, and helper functions. React Context is used so every page can access the wallet and profile without passing props through many layers. encryption.js derives the AES key and encrypts or decrypts file bytes. contractHelper.js centralizes ethers.js provider, signer, contract, and wrapper functions.
-
-MetaMask transaction toasts are handled with React Toastify. When a transaction starts, the UI shows a pending toast. After tx.wait resolves, the toast changes to confirmed. If MetaMask rejects or the contract reverts, the toast shows the error.
-
-## 9. INSTITUTION MODEL
-
-An institution in this project is a registered hospital or clinic. It has an on-chain ID, name, type, admin wallet, and verification flag. The model was added to fulfill the requirement that records can be shared between hospitals and clinics, not only individual doctors.
-
-Institution access works in steps. First, an admin wallet registers a hospital or clinic. Second, the admin adds doctor wallet addresses to that institution. Third, a patient grants that institution access to a specific record. Fourth, when a doctor tries to view the record, hasAccess checks both direct doctor access and institution membership. If the doctor belongs to an institution that has access to the record, access is allowed.
-
-This differs from direct doctor access because direct access names one doctor wallet. Institution access names an organization and automatically covers current doctors in that organization. Removing a doctor from the institution removes their institution-based access without requiring every patient to revoke that doctor individually.
-
-## 10. SECURITY MODEL
-
-| Protected threat | Protection mechanism |
+| File | Purpose |
 | --- | --- |
-| Unauthorized record access | Smart contract access control checks direct doctor grants and institution membership. |
-| Record tampering | IPFS CIDs change if encrypted file content changes. |
-| Server-side data leaks | Files are encrypted in the browser before backend upload. |
-| Audit trail manipulation | Grant and revoke events are stored on-chain and are immutable. |
+| `Register.js` | Role registration and encryption public key registration. |
+| `PatientDashboard.js` | Patient records, upload, metadata, access modal, notes, documents, profile, notifications, and audit trail. |
+| `DoctorDashboard.js` | Accessible records, decrypt/download, notes, care documents, membership requests, prediction, history, notifications. |
+| `InstitutionDashboard.js` | Institution registration, doctors, doctor requests, shared records, notifications. |
+| `AccessModal.js` | Patient grant/revoke doctor/institution access, resend/share keys. |
+| `PredictionForm.js` | Diabetes prediction form. |
+| `NotificationsPanel.js` | Notification list and mark-read action. |
+| `RecordCard.js` | Shared record display component. |
 
-| Not protected threat | Honest limitation |
+The UI includes empty states for tabs/lists with no records, notes, documents, requests, notifications, history, or shared records.
+
+## 10. Institution Model
+
+An institution is a hospital or clinic registered by an admin wallet. Doctors can request membership. Admins can approve or reject requests, manually add doctors, and remove doctors.
+
+Institution access grants the organization access on-chain. Doctors still need an encrypted key envelope to decrypt the record. Newly added institution doctors do not automatically receive old AES keys; the patient can use Share keys for already shared institution records.
+
+When an admin removes a doctor, the doctor receives a notification and loses institution-based access.
+
+## 11. Security Model
+
+| Protected threat | Protection |
 | --- | --- |
-| Wallet private key theft | A stolen wallet can sign transactions and messages as the user. |
-| Malicious authorized doctor | A doctor with legitimate access can copy decrypted data. |
-| Pinata service unavailability | If Pinata or an IPFS gateway is unavailable, retrieval may fail. |
-| Unaudited smart contract bugs | The contract is a prototype and has not received formal security audit. |
+| Unauthorized blockchain access | Smart contract ownership and permission checks. |
+| Backend plaintext leaks | Browser encrypts files before upload. |
+| Pinata/IPFS reading medical files | Only encrypted blobs are pinned. |
+| Silent permission changes | Grant/revoke events are on-chain. |
+| Doctor key isolation | AES key envelopes are encrypted to specific MetaMask public keys. |
 
-## 11. FILE & FOLDER REFERENCE
+| Limitation | Explanation |
+| --- | --- |
+| Authorized doctor copying data | A doctor who can decrypt a record can copy it. |
+| Wallet theft | A stolen wallet can sign and decrypt as that user. |
+| Lost keys | Lost local AES material can make recovery impossible. |
+| Testnet deployment | Sepolia is not production. |
+| No formal audit | Prototype contract and app have not been formally audited. |
+| Institution verification | Institution admins are self-registered in the prototype. |
+
+## 12. Testing and Validation
+
+### 12.1 Unit Testing
+
+Run backend tests:
+
+```powershell
+cd backend
+npm test
+```
+
+Latest result:
+
+```text
+4 passed, 0 failed
+```
+
+Run smart contract tests:
+
+```powershell
+cd blockchain
+npm test
+```
+
+Latest result:
+
+```text
+3 passing
+```
+
+Run frontend build validation:
+
+```powershell
+cd frontend
+npm run build
+```
+
+Run ML training validation:
+
+```powershell
+cd ml_service
+.\.venv\Scripts\activate
+python train.py
+```
+
+Run ML prediction smoke test:
+
+```powershell
+cd ml_service
+@'
+import main
+main.load_model()
+payload = main.DiabetesInput(
+    gender="Female",
+    age=54,
+    hypertension=0,
+    heart_disease=0,
+    smoking_history="never",
+    bmi=27.32,
+    HbA1c_level=6.6,
+    blood_glucose_level=140,
+)
+print(main.predict(payload))
+'@ | .\.venv\Scripts\python.exe -
+```
+
+Expected output shape:
+
+```text
+{'prediction': 0, 'probability': 0.08}
+```
+
+### 12.2 Integration Testing
+
+Integration evidence is stored in:
+
+```text
+test\integration\integration-test-results.md
+```
+
+The automated integration checks cover backend auth, smart contract permission logic, frontend build/import compatibility, ML training, and ML prediction logic.
+
+Browser integration tests require running the full app with MetaMask:
+
+```powershell
+cd backend
+node server.js
+```
+
+```powershell
+cd ml_service
+.\.venv\Scripts\activate
+uvicorn main:app --reload
+```
+
+```powershell
+cd frontend
+npm start
+```
+
+### 12.3 System Testing
+
+System test cases are stored in:
+
+```text
+test\system\system-test-cases.md
+```
+
+The main manual workflows are patient upload, patient grant, doctor decrypt, doctor note, doctor care document, institution grant, membership approval/removal, notifications, and prediction auto-fill.
+
+### 12.4 Usability Testing
+
+The usability plan is stored in:
+
+```text
+test\usability\usability-test-plan.md
+```
+
+Usability testing requires real participants. The recommended participants are four patients, four doctors, and two institution admins. The target SUS score is above 68/100.
+
+## 13. Setup and Run Commands
+
+Install dependencies:
+
+```powershell
+cd blockchain
+npm install
+
+cd ..\backend
+npm install
+
+cd ..\frontend
+npm install
+
+cd ..\ml_service
+py -3 -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+```
+
+Run services:
+
+```powershell
+cd backend
+node server.js
+```
+
+```powershell
+cd ml_service
+.\.venv\Scripts\activate
+uvicorn main:app --reload
+```
+
+```powershell
+cd frontend
+npm start
+```
+
+## 14. Sample Records
+
+Fake test PDFs are available in `sample_records`:
+
+| File | Use |
+| --- | --- |
+| `sample_diabetes_vitals.pdf` | Prediction auto-fill test. |
+| `sample_blood_test_report.pdf` | General lab upload/share test. |
+| `sample_radiology_report.pdf` | Imaging-style upload/share test. |
+| `sample_prescription.pdf` | Prescription upload/share test. |
+| `sample_discharge_summary.pdf` | Discharge summary upload/share test. |
+| `sample_clinic_visit_note.pdf` | Clinic note upload/share test. |
+
+## 15. File and Folder Reference
 
 | File or folder | Purpose |
 | --- | --- |
-| blockchain/contracts/HealthTrust.sol | Solidity smart contract for records, access, institutions, doctors, and audit events. |
-| blockchain/scripts/deploy.js | Deploys the contract and writes shared contract address and ABI. |
-| blockchain/hardhat.config.js | Hardhat compiler and Sepolia network configuration. |
-| blockchain/package.json | Blockchain dependencies and scripts. |
-| backend/server.js | Starts Express, connects PostgreSQL through Prisma, and mounts API routes. |
-| backend/controllers/userController.js | Handles user registration and lookup. |
-| backend/controllers/recordController.js | Handles Pinata uploads and record reads. |
-| backend/controllers/accessController.js | Handles access-control proxy routes and access checks. |
-| backend/controllers/institutionController.js | Handles institution storage and institution doctor reads. |
-| backend/controllers/predictController.js | Forwards prediction requests to FastAPI. |
-| backend/lib/prisma.js | Shared Prisma client used by backend controllers. |
-| backend/prisma/schema.prisma | PostgreSQL schema for users and institutions. |
-| backend/routes/users.js | User API routes. |
-| backend/routes/records.js | Record API routes. |
-| backend/routes/access.js | Access-control API routes. |
-| backend/routes/institutions.js | Institution API routes. |
-| backend/routes/predict.js | Prediction API route. |
-| backend/.env.example | Documented backend environment template. |
-| backend/package.json | Backend dependencies and scripts. |
-| frontend/index.html | Vite HTML entrypoint. |
-| frontend/vite.config.js | Vite configuration for React JSX files and shared contract config imports. |
-| frontend/src/main.jsx | React render entrypoint. |
-| frontend/src/App.js | Main role-based app flow. |
-| frontend/src/styles.css | Frontend layout and component styling. |
-| frontend/src/context/WalletContext.js | Global wallet and profile state. |
-| frontend/src/utils/encryption.js | AES key derivation, encryption, and decryption. |
-| frontend/src/utils/contractHelper.js | ethers.js contract helper functions. |
-| frontend/src/pages/Register.js | Role registration page. |
-| frontend/src/pages/PatientDashboard.js | Patient record upload, records list, and audit view. |
-| frontend/src/pages/DoctorDashboard.js | Doctor accessible records and diabetes prediction. |
-| frontend/src/pages/InstitutionDashboard.js | Institution registration and doctor management. |
-| frontend/src/components/Navbar.js | Header with wallet and user status. |
-| frontend/src/components/RecordCard.js | Reusable record display component. |
-| frontend/src/components/AccessModal.js | Grant and revoke modal for doctors and institutions. |
-| frontend/src/components/PredictionForm.js | Eight-field diabetes prediction form. |
-| frontend/src/components/RiskMeter.js | Color-coded probability display. |
-| frontend/package.json | Frontend dependencies and scripts. |
-| ml_service/train.py | Trains RandomForestClassifier and saves model.pkl. |
-| ml_service/main.py | FastAPI prediction service. |
-| ml_service/requirements.txt | Python dependencies. |
-| ml_service/diabetes.csv | User-downloaded dataset, ignored by git. |
-| ml_service/model.pkl | Generated trained model, ignored by git. |
-| shared/contractConfig.js | Shared contract address and ABI. |
-| README.md | Setup and usage documentation. |
-| PROJECT_GUIDE.md | Full explanatory project guide. |
-| .gitignore | Prevents secrets, datasets, and generated models from being committed. |
+| `blockchain/contracts/HealthTrust.sol` | Solidity smart contract. |
+| `blockchain/scripts/deploy.js` | Deploys contract and writes shared config. |
+| `backend/server.js` | Express app entrypoint. |
+| `backend/prisma/schema.prisma` | PostgreSQL schema. |
+| `frontend/src/pages/PatientDashboard.js` | Patient role UI. |
+| `frontend/src/pages/DoctorDashboard.js` | Doctor role UI. |
+| `frontend/src/pages/InstitutionDashboard.js` | Institution admin role UI. |
+| `frontend/src/components/AccessModal.js` | Patient access and key-sharing modal. |
+| `frontend/src/components/PredictionForm.js` | Diabetes prediction form. |
+| `frontend/src/utils/encryption.js` | AES file encryption/decryption helpers. |
+| `frontend/src/utils/keySharing.js` | MetaMask encryption key envelope helpers. |
+| `frontend/src/utils/recordSharing.js` | Stores doctor/institution key envelopes. |
+| `ml_service/train.py` | Trains model and writes `model.pkl`. |
+| `ml_service/main.py` | FastAPI prediction service. |
+| `sample_records/` | Fake PDFs for testing. |
+| `test/` | Testing evidence and plans. |
+| `shared/contractConfig.js` | Deployed contract address and ABI. |
 
-## 12. GLOSSARY
+## 16. Glossary
 
 | Term | Definition |
 | --- | --- |
-| Blockchain | A shared ledger where transactions are recorded in a tamper-resistant way. |
-| Smart Contract | Code deployed to a blockchain that executes rules automatically. |
-| Solidity | Programming language used to write Ethereum smart contracts. |
-| Sepolia | Ethereum test network used for development. |
-| Testnet | Blockchain network for testing with no real-value currency. |
-| MetaMask | Browser wallet used to manage accounts, sign messages, and sign transactions. |
-| Wallet Address | Public identifier for a blockchain account. |
-| Private Key | Secret key that controls a wallet and must never be shared. |
-| Gas | Fee paid to run blockchain transactions. |
-| Transaction | A signed blockchain action that changes state. |
-| IPFS | Distributed content-addressed file storage network. |
-| CID | Content identifier for an IPFS file. |
-| Pinata | Service that pins files to IPFS and keeps them available. |
-| AES Encryption | Symmetric encryption algorithm used to protect files. |
-| Symmetric Encryption | Encryption where one secret key encrypts and decrypts. |
-| Client-side Encryption | Encryption performed in the browser before upload. |
-| PostgreSQL | Relational database used for profiles and institution metadata. |
-| Prisma | Node.js database toolkit and ORM used for PostgreSQL schema and queries. |
-| REST API | HTTP API style using routes and JSON. |
-| ethers.js | JavaScript library for Ethereum wallet and contract interaction. |
-| Hardhat | Ethereum development framework for compile and deploy tasks. |
-| OpenZeppelin | Library of audited Solidity building blocks. |
-| RandomForestClassifier | scikit-learn machine learning model using many decision trees. |
-| joblib | Python tool for saving and loading trained models. |
-| FastAPI | Python web framework used for the ML prediction API. |
-| CORS | Browser policy configuration for cross-origin API requests. |
-| React Context | React state-sharing mechanism used for wallet and user profile data. |
-| ABI | Contract interface description used by ethers.js. |
-| Institution | In this project, a registered hospital or clinic that can manage doctor membership. |
+| AES | Symmetric encryption algorithm used for file encryption. |
+| CID | IPFS content identifier. |
+| IPFS | Distributed content-addressed file storage. |
+| Pinata | IPFS pinning provider. |
+| MetaMask | Browser wallet for account access, encryption operations, and transaction signing. |
+| Sepolia | Ethereum test network. |
+| Smart contract | Blockchain program that stores record and permission rules. |
+| Key envelope | AES key encrypted for a specific doctor wallet. |
+| Prisma | Node.js database toolkit. |
+| FastAPI | Python API framework used for the ML service. |
+| RandomForestClassifier | scikit-learn model used for diabetes prediction. |
 
-## 13. KNOWN LIMITATIONS & FUTURE IMPROVEMENTS
+## 17. Known Limitations and Future Improvements
 
-Known limitations are important because this project is a prototype, not a hospital-ready production system. Wallet loss can mean permanent record loss because encryption depends on wallet-based key material. Sepolia is a testnet only. The ML model is not a certified medical tool. The smart contract has not received a formal security audit. Institution admins are self-registered, so there is no real-world KYC or authority verification. There is also no mobile app, and the interface is designed for desktop browsers with MetaMask.
+Known limitations:
 
-Future improvements include mainnet deployment with gas optimization, social recovery or multi-signature wallets for patients, federated learning for the ML model, a mobile app using React Native, real hospital KYC verification, support for more diseases beyond diabetes, and integration with existing Kurdish hospital systems. Another important improvement would be a formal key-sharing design so patients can grant encrypted record access without sharing raw signatures outside the application. That would make the privacy model stronger and more practical for real healthcare use.
+- Sepolia is a testnet.
+- The system is not production-ready.
+- Revocation cannot erase already downloaded/decrypted files.
+- A malicious authorized doctor can copy plaintext after decrypting.
+- Wallet loss or lost key material can make recovery impossible.
+- Pinata/IPFS gateway outages can affect retrieval.
+- Institution admins are self-registered with no real-world KYC.
+- The ML result is not a medical diagnosis.
+- No formal security audit has been performed.
+
+Future improvements:
+
+- Verified institution onboarding.
+- Stronger recovery model for lost wallets/keys.
+- More disease prediction models.
+- OCR support for scanned PDFs.
+- Mobile app support.
+- Formal smart contract and security audit.
+- Production deployment plan with real compliance review.

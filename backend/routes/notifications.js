@@ -4,6 +4,7 @@ const { requireWalletAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
+router.post("/", requireWalletAuth("create-notification"), notificationController.create);
 router.get("/", requireWalletAuth("read-notifications"), notificationController.getMine);
 router.patch("/:id/read", requireWalletAuth("read-notifications"), notificationController.markRead);
 

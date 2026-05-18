@@ -12,46 +12,42 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 625 >>
+<< /Length 661 >>
 stream
 BT
-/F1 18 Tf
+/F1 14 Tf
 72 760 Td
-/F1 16 Tf
 (TEST SAMPLE ONLY - NOT A REAL MEDICAL RECORD) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
 (Document Type: Prescription) Tj
-/F1 11 Tf
-0 -17 Td
-(Patient Name: Demo Patient C) Tj
-/F1 11 Tf
-0 -17 Td
-(Patient ID: HT-PAT-003) Tj
-/F1 11 Tf
-0 -17 Td
-(Date: 2026-05-18) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Patient Name: Demo Patient D) Tj
+0 -16 Td
+(Patient ID: HT-PAT-004) Tj
+0 -16 Td
+(Date: 2026-05-16) Tj
+0 -16 Td
+(Prescriber: Dr. Demo Kareem) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Medication: Metformin 500 mg) Tj
-/F1 11 Tf
-0 -17 Td
-(Dose: One tablet twice daily with meals) Tj
-/F1 11 Tf
-0 -17 Td
-(Duration: 30 days) Tj
-/F1 11 Tf
-0 -17 Td
-(Doctor: Dr. Demo Kareem) Tj
-/F1 11 Tf
-0 -17 Td
+0 -16 Td
+(Medication: Metformin 500 mg tablet) Tj
+0 -16 Td
+(Directions: Take one tablet by mouth twice daily with meals.) Tj
+0 -16 Td
+(Quantity: 60 tablets) Tj
+0 -16 Td
+(Refills: 0) Tj
+0 -16 Td
 () Tj
-/F1 11 Tf
-0 -17 Td
-(Notes: Sample prescription for upload and access-control testing.) Tj
+0 -16 Td
+(Medication: Vitamin D3 1000 IU tablet) Tj
+0 -16 Td
+(Directions: Take one tablet by mouth once daily.) Tj
+0 -16 Td
+(Quantity: 30 tablets) Tj
+0 -16 Td
+(Refills: 1) Tj
 ET
 endstream
 endobj
@@ -66,5 +62,5 @@ xref
 trailer
 << /Size 6 /Root 1 0 R >>
 startxref
-987
+1022
 %%EOF

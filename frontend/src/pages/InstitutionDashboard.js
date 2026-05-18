@@ -2,12 +2,15 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Building2, Clipboard, Check, FileText, Plus, RefreshCw, Stethoscope, Trash2, X } from "lucide-react";
+import { ethers } from "ethers";
 import { useWallet } from "../context/WalletContext";
 import NotificationsPanel from "../components/NotificationsPanel";
+import RecordCard from "../components/RecordCard";
 import StatCard from "../components/StatCard";
 import {
   addDoctorToInstitution,
   getAllInstitutionsFromChain,
+  getInstitutionSharedRecords,
   getInstitutionDoctors,
   parseReceiptEvent,
   registerInstitution,
@@ -21,22 +24,20 @@ export default function InstitutionDashboard() {
   const [institution, setInstitution] = useState(null);
   const [doctors, setDoctors] = useState([]);
   const [doctorAddress, setDoctorAddress] = useState("");
-  const [requests, setRequests] = useState([]);
   const [membershipRequests, setMembershipRequests] = useState([]);
   const [sharedKeys, setSharedKeys] = useState([]);
+  const [sharedRecords, setSharedRecords] = useState([]);
+  const [metadata, setMetadata] = useState({});
   const [form, setForm] = useState({ name: "", institutionType: "hospital" });
-  const [accessForm, setAccessForm] = useState({ patientWallet: "", recordId: "", reason: "" });
 
   async function loadInstitution() {
     const response = await axios.get(`${API_URL}/api/institutions`);
     const found = response.data.find((item) => item.adminWallet.toLowerCase() === walletAddress.toLowerCase());
     setInstitution(found || null);
     const headers = await createAuthHeaders(walletAddress);
-    const [accessResponse, membershipResponse] = await Promise.all([
-      axios.get(`${API_URL}/api/access-requests`, { headers }),
+    const [membershipResponse] = await Promise.all([
       axios.get(`${API_URL}/api/membership-requests`, { headers }),
     ]);
-    setRequests(accessResponse.data);
     setMembershipRequests(membershipResponse.data);
     if (found) {
       const chainInstitutions = await getAllInstitutionsFromChain();
@@ -48,9 +49,20 @@ export default function InstitutionDashboard() {
       setDoctors(doctorList);
       const keys = await axios.get(`${API_URL}/api/record-keys/institution/${found.institutionId}`, { headers });
       setSharedKeys(keys.data);
+      const records = await getInstitutionSharedRecords(found.institutionId);
+      setSharedRecords(records);
+      const ids = records.map((record) => record.id).join(",");
+      if (ids) {
+        const meta = await axios.get(`${API_URL}/api/records/metadata/bulk?ids=${ids}`);
+        setMetadata(Object.fromEntries(meta.data.map((row) => [row.recordId, row])));
+      } else {
+        setMetadata({});
+      }
     } else {
       setDoctors([]);
       setSharedKeys([]);
+      setSharedRecords([]);
+      setMetadata({});
     }
   }
 
@@ -62,7 +74,7 @@ export default function InstitutionDashboard() {
     () => membershipRequests.filter((request) => request.status === "pending" && request.institutionId === institution?.institutionId),
     [membershipRequests, institution]
   );
-  const activeSharedRecords = new Set(sharedKeys.map((key) => key.recordId)).size;
+  const activeSharedRecords = sharedRecords.length;
 
   async function createInstitution(event) {
     event.preventDefault();
@@ -85,6 +97,14 @@ export default function InstitutionDashboard() {
   }
 
   async function addDoctor(address = doctorAddress) {
+    if (!institution) {
+      toast.error("Register an institution first");
+      return false;
+    }
+    if (!ethers.isAddress(address)) {
+      toast.error("Enter a valid doctor wallet address");
+      return false;
+    }
     const toastId = toast.loading("Adding doctor...");
     try {
       const tx = await addDoctorToInstitution(institution.institutionId, address);
@@ -92,16 +112,32 @@ export default function InstitutionDashboard() {
       toast.update(toastId, { render: "Doctor added", type: "success", isLoading: false, autoClose: 3000 });
       setDoctorAddress("");
       await loadInstitution();
+      return true;
     } catch (error) {
       toast.update(toastId, { render: error.reason || error.message, type: "error", isLoading: false, autoClose: 5000 });
+      return false;
     }
   }
 
   async function removeDoctor(address) {
+    if (!institution) {
+      toast.error("Register an institution first");
+      return;
+    }
     const toastId = toast.loading("Removing doctor...");
     try {
       const tx = await removeDoctorFromInstitution(institution.institutionId, address);
       await tx.wait();
+      await axios.post(
+        `${API_URL}/api/notifications`,
+        {
+          wallet: address,
+          type: "membership_removed",
+          title: "Removed from institution",
+          message: `You were removed from ${institution.name}.`,
+        },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
       toast.update(toastId, { render: "Doctor removed", type: "success", isLoading: false, autoClose: 3000 });
       await loadInstitution();
     } catch (error) {
@@ -115,28 +151,21 @@ export default function InstitutionDashboard() {
   }
 
   async function updateMembership(request, status) {
-    if (status === "approved") {
-      await addDoctor(request.doctorWallet);
+    try {
+      if (status === "approved") {
+        const doctorAdded = await addDoctor(request.doctorWallet);
+        if (!doctorAdded) return;
+      }
+      await axios.patch(
+        `${API_URL}/api/membership-requests/${request.id}`,
+        { status },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
+      toast.success(`Membership ${status}`);
+      await loadInstitution();
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || `Unable to mark membership ${status}`);
     }
-    await axios.patch(
-      `${API_URL}/api/membership-requests/${request.id}`,
-      { status },
-      { headers: await createAuthHeaders(walletAddress) }
-    );
-    toast.success(`Membership ${status}`);
-    await loadInstitution();
-  }
-
-  async function requestAccess(event) {
-    event.preventDefault();
-    await axios.post(
-      `${API_URL}/api/access-requests`,
-      { ...accessForm, requestType: "institution", institutionId: institution.institutionId, recordId: Number(accessForm.recordId) },
-      { headers: await createAuthHeaders(walletAddress) }
-    );
-    toast.success("Institution access request sent");
-    setAccessForm({ patientWallet: "", recordId: "", reason: "" });
-    await loadInstitution();
   }
 
   return (
@@ -159,9 +188,9 @@ export default function InstitutionDashboard() {
       </section>
 
       <div className="tabs">
-        {["institution", "doctors", "requests", "shared", "notifications"].map((tab) => (
+        {["institution", "doctors", "doctor_requests", "shared", "notifications"].map((tab) => (
           <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-            {tab === "institution" ? "My Institution" : tab[0].toUpperCase() + tab.slice(1)}
+            {tab === "institution" ? "My Institution" : tab === "doctor_requests" ? "Doctor Requests" : tab[0].toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
@@ -195,101 +224,90 @@ export default function InstitutionDashboard() {
       )}
 
       {activeTab === "doctors" && (
-        <section className="panel split-panel">
-          <div>
-            <div className="inline-form">
-              <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} placeholder="Doctor wallet address" />
-              <button className="icon-button with-label" onClick={() => addDoctor()} disabled={!institution}>
-                <Plus size={16} />
-                Add
-              </button>
-            </div>
-            <div className="doctor-list">
-              {doctors.map((doctor) => (
-                <div className="doctor-row" key={doctor}>
-                  <span>{doctor}</span>
-                  <div className="row-actions">
-                    <button className="icon-button ghost" onClick={() => copyAddress(doctor)} aria-label="Copy doctor wallet">
-                      <Clipboard size={16} />
-                    </button>
-                    <button className="icon-button" onClick={() => removeDoctor(doctor)} aria-label="Remove doctor">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+        <section className="panel">
+          <div className="inline-form">
+            <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} placeholder="Doctor wallet address" />
+            <button className="icon-button with-label" onClick={() => addDoctor()} disabled={!institution}>
+              <Plus size={16} />
+              Add
+            </button>
           </div>
-          <div className="request-list">
-            <h3>Doctor membership requests</h3>
-            {pendingMembership.map((request) => (
-              <article className="request-row" key={request.id}>
-                <div>
-                  <strong>{request.doctorWallet}</strong>
-                  <p>{request.message}</p>
-                </div>
+          <div className="doctor-list">
+            {doctors.map((doctor) => (
+              <div className="doctor-row" key={doctor}>
+                <span>{doctor}</span>
                 <div className="row-actions">
-                  <button onClick={() => updateMembership(request, "approved")}>
-                    <Check size={16} />
-                    Approve
+                  <button className="icon-button ghost" onClick={() => copyAddress(doctor)} aria-label="Copy doctor wallet">
+                    <Clipboard size={16} />
                   </button>
-                  <button className="secondary" onClick={() => updateMembership(request, "rejected")} aria-label="Reject request">
-                    <X size={16} />
+                  <button className="icon-button" onClick={() => removeDoctor(doctor)} aria-label="Remove doctor">
+                    <Trash2 size={16} />
                   </button>
                 </div>
-              </article>
+              </div>
             ))}
+            {doctors.length === 0 && (
+              <div className="empty-state">
+                <Stethoscope size={28} />
+                <strong>No doctors yet</strong>
+                <span>Approved or manually added doctors will appear here.</span>
+              </div>
+            )}
           </div>
         </section>
       )}
 
-      {activeTab === "requests" && (
-        <section className="panel split-panel">
-          <form className="form-grid" onSubmit={requestAccess}>
-            <label>
-              Patient wallet
-              <input value={accessForm.patientWallet} onChange={(event) => setAccessForm({ ...accessForm, patientWallet: event.target.value })} required />
-            </label>
-            <label>
-              Record ID
-              <input type="number" value={accessForm.recordId} onChange={(event) => setAccessForm({ ...accessForm, recordId: event.target.value })} required />
-            </label>
-            <label>
-              Reason
-              <textarea value={accessForm.reason} onChange={(event) => setAccessForm({ ...accessForm, reason: event.target.value })} />
-            </label>
-            <button disabled={!institution}>Request Access</button>
-          </form>
-          <div className="request-list">
-            <h3>Access requests</h3>
-            {requests.map((request) => (
-              <article className="request-row" key={request.id}>
-                <strong>Record #{request.recordId}</strong>
-                <span>{request.patientWallet}</span>
+      {activeTab === "doctor_requests" && (
+        <section className="panel request-list">
+          <h3>Doctor membership requests</h3>
+          {pendingMembership.map((request) => (
+            <article className="request-row" key={request.id}>
+              <div>
+                <strong>{request.doctorWallet}</strong>
                 <small>Status: {request.status}</small>
-              </article>
-            ))}
-          </div>
+                {request.message && <p>{request.message}</p>}
+              </div>
+              <div className="row-actions">
+                <button onClick={() => updateMembership(request, "approved")}>
+                  <Check size={16} />
+                  Approve
+                </button>
+                <button className="secondary" onClick={() => updateMembership(request, "rejected")} aria-label="Reject request">
+                  <X size={16} />
+                </button>
+              </div>
+            </article>
+          ))}
+          {pendingMembership.length === 0 && (
+            <div className="empty-state">
+              <Stethoscope size={28} />
+              <strong>No doctor requests</strong>
+              <span>New doctor membership requests will appear here.</span>
+            </div>
+          )}
         </section>
       )}
 
       {activeTab === "shared" && (
-        <section className="panel request-list">
+        <section className="panel record-list">
           <h3>Records shared with this institution</h3>
-          {sharedKeys.map((key) => (
-            <article className="request-row" key={key.id}>
-              <div>
-                <strong>Record #{key.recordId}</strong>
-                <span>Patient: {key.ownerWallet}</span>
-                <small>Decrypting doctor: {key.recipientWallet}</small>
-              </div>
-              <span className="badge">Key shared</span>
-            </article>
+          {sharedRecords.map((record) => (
+            <RecordCard
+              key={record.id}
+              record={record}
+              filename={metadata[record.id]?.title || metadata[record.id]?.filename}
+              actions={
+                <span className="badge">
+                  {sharedKeys.filter((key) => key.recordId === record.id).length} doctor key(s)
+                </span>
+              }
+            />
           ))}
-          {sharedKeys.length === 0 && (
+          {sharedRecords.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
               <strong>No shared records yet</strong>
+              <span>Records granted to this institution will appear here.</span>
             </div>
           )}
         </section>

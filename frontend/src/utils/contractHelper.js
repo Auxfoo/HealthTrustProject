@@ -95,6 +95,41 @@ export async function getAllRecords() {
   }));
 }
 
+export async function getInstitutionSharedRecords(institutionId) {
+  const provider = await getBrowserProvider();
+  const contract = getContract(provider);
+  const [records, grantLogs, revokeLogs] = await Promise.all([
+    contract.getAllRecords(),
+    contract.queryFilter(contract.filters.AccessGrantedToInstitution(), 0, "latest"),
+    contract.queryFilter(contract.filters.AccessRevokedFromInstitution(), 0, "latest"),
+  ]);
+  const targetInstitutionId = Number(institutionId);
+  const events = [...grantLogs, ...revokeLogs].sort((a, b) => {
+    if (a.blockNumber !== b.blockNumber) return a.blockNumber - b.blockNumber;
+    return a.index - b.index;
+  });
+  const activeRecordIds = new Set();
+
+  events.forEach((event) => {
+    if (Number(event.args.institutionId) !== targetInstitutionId) return;
+    const recordId = Number(event.args.recordId);
+    if (event.fragment.name === "AccessGrantedToInstitution") {
+      activeRecordIds.add(recordId);
+    } else {
+      activeRecordIds.delete(recordId);
+    }
+  });
+
+  return records
+    .map((record) => ({
+      id: Number(record.id),
+      cid: record.cid,
+      uploadedBy: record.uploadedBy,
+      timestamp: Number(record.timestamp),
+    }))
+    .filter((record) => activeRecordIds.has(record.id));
+}
+
 export async function hasAccess(recordId, doctorAddress) {
   const provider = await getBrowserProvider();
   return getContract(provider).hasAccess(recordId, doctorAddress);

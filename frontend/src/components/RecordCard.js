@@ -1,5 +1,5 @@
 import React from "react";
-import { Clipboard, ExternalLink, FileText, Key, KeyRound } from "lucide-react";
+import { Clipboard, ExternalLink, FileText, KeyRound } from "lucide-react";
 import { toast } from "react-toastify";
 
 function truncateCid(cid) {
@@ -7,7 +7,7 @@ function truncateCid(cid) {
   return `${cid.slice(0, 10)}...${cid.slice(-8)}`;
 }
 
-export default function RecordCard({ record, filename, aesKey, onManageAccess, actions }) {
+export default function RecordCard({ record, filename, onManageAccess, actions }) {
   const timestamp = record.timestamp
     ? new Date(record.timestamp * 1000).toLocaleString()
     : "Pending timestamp";
@@ -17,11 +17,6 @@ export default function RecordCard({ record, filename, aesKey, onManageAccess, a
     toast.success("CID copied");
   }
 
-  async function copyAesKey() {
-    await navigator.clipboard.writeText(aesKey);
-    toast.success("AES key copied");
-  }
-
   return (
     <article className="record-card">
       <div className="record-icon">
@@ -29,6 +24,7 @@ export default function RecordCard({ record, filename, aesKey, onManageAccess, a
       </div>
       <div className="record-details">
         <strong>{filename || `Record #${record.id}`}</strong>
+        <span>Record ID: {record.id}</span>
         <span>CID: {truncateCid(record.cid)}</span>
         {record.uploadedBy && <span>Patient: {record.uploadedBy}</span>}
         <span>{timestamp}</span>
@@ -40,12 +36,6 @@ export default function RecordCard({ record, filename, aesKey, onManageAccess, a
         <a className="icon-link" href={`https://gateway.pinata.cloud/ipfs/${record.cid}`} target="_blank" rel="noreferrer">
           <ExternalLink size={16} />
         </a>
-        {aesKey && (
-          <button className="icon-button with-label secondary" onClick={copyAesKey}>
-            <Key size={16} />
-            Copy Key
-          </button>
-        )}
         {onManageAccess && (
           <button className="icon-button with-label" onClick={() => onManageAccess(record)}>
             <KeyRound size={16} />

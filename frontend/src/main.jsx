@@ -10,7 +10,15 @@ ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <WalletProvider>
       <App />
-      <ToastContainer position="top-right" theme="colored" />
+      <ToastContainer
+        position="bottom-right"
+        theme="dark"
+        newestOnTop
+        closeOnClick
+        pauseOnFocusLoss={false}
+        toastClassName="healthtrust-toast"
+        progressClassName="healthtrust-toast-progress"
+      />
     </WalletProvider>
   </React.StrictMode>
 );

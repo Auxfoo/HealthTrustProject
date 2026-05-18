@@ -17,6 +17,32 @@ function bytesToUtf8(bytes) {
   return new TextDecoder().decode(bytes);
 }
 
+function utf8ToHex(value) {
+  return `0x${Array.from(utf8ToBytes(value))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function hexToUtf8(value) {
+  const hex = value.startsWith("0x") ? value.slice(2) : value;
+  const bytes = new Uint8Array(hex.match(/.{1,2}/g)?.map((byte) => Number.parseInt(byte, 16)) || []);
+  return bytesToUtf8(bytes);
+}
+
+function normalizeEncryptedKey(encryptedKey) {
+  if (typeof encryptedKey !== "string") {
+    const json = JSON.stringify(encryptedKey);
+    return { payload: encryptedKey, hex: utf8ToHex(json) };
+  }
+
+  if (encryptedKey.startsWith("0x")) {
+    const json = hexToUtf8(encryptedKey);
+    return { payload: JSON.parse(json), hex: encryptedKey };
+  }
+
+  return { payload: JSON.parse(encryptedKey), hex: utf8ToHex(encryptedKey) };
+}
+
 export async function getEncryptionPublicKey(walletAddress) {
   if (!window.ethereum?.request) {
     throw new Error("MetaMask is required to register an encryption key");
@@ -32,36 +58,38 @@ export function encryptRecordKeyForDoctor(aesKey, publicKey) {
   const ephemeral = nacl.box.keyPair();
   const nonce = nacl.randomBytes(nacl.box.nonceLength);
   const encrypted = nacl.box(utf8ToBytes(aesKey), nonce, base64ToBytes(publicKey), ephemeral.secretKey);
-  return JSON.stringify({
+  return utf8ToHex(JSON.stringify({
     version: "x25519-xsalsa20-poly1305",
     nonce: bytesToBase64(nonce),
     ephemPublicKey: bytesToBase64(ephemeral.publicKey),
     ciphertext: bytesToBase64(encrypted),
-  });
+  }));
 }
 
 export async function decryptRecordKey(encryptedKey, walletAddress) {
-  const payload = typeof encryptedKey === "string" ? JSON.parse(encryptedKey) : encryptedKey;
-  const message = {
-    version: "x25519-xsalsa20-poly1305",
-    nonce: payload.nonce,
-    ephemPublicKey: payload.ephemPublicKey,
-    ciphertext: payload.ciphertext,
-  };
+  if (!window.ethereum?.request) {
+    throw new Error("MetaMask is required to decrypt the shared record key.");
+  }
+
+  const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+  const hasWallet = accounts.some((account) => account.toLowerCase() === walletAddress.toLowerCase());
+  if (!hasWallet) {
+    throw new Error("Switch MetaMask to the doctor wallet that received access, then try View again.");
+  }
+
+  const { hex } = normalizeEncryptedKey(encryptedKey);
   try {
     return await window.ethereum.request({
       method: "eth_decrypt",
-      params: [JSON.stringify(message), walletAddress],
+      params: [hex, walletAddress],
     });
   } catch (error) {
-    const secret = window.prompt("MetaMask could not decrypt this key. Paste the AES key if the patient shared it with you.");
-    if (!secret) throw error;
-    return secret;
+    throw new Error(error.message || "MetaMask could not decrypt the shared record key.");
   }
 }
 
 export function decryptRecordKeyLocally(encryptedKey, secretKey) {
-  const payload = typeof encryptedKey === "string" ? JSON.parse(encryptedKey) : encryptedKey;
+  const { payload } = normalizeEncryptedKey(encryptedKey);
   const decrypted = nacl.box.open(
     base64ToBytes(payload.ciphertext),
     base64ToBytes(payload.nonce),

@@ -7,7 +7,12 @@ import AccessModal from "../components/AccessModal";
 import NotificationsPanel from "../components/NotificationsPanel";
 import RecordCard from "../components/RecordCard";
 import StatCard from "../components/StatCard";
-import { addRecord, getBrowserProvider, getContract, parseReceiptEvent } from "../utils/contractHelper";
+import {
+  addRecord,
+  getBrowserProvider,
+  getContract,
+  parseReceiptEvent,
+} from "../utils/contractHelper";
 import { encryptFile, generateRandomKey } from "../utils/encryption";
 import { createAuthHeaders } from "../utils/auth";
 
@@ -54,7 +59,7 @@ export default function PatientDashboard() {
   const [records, setRecords] = useState([]);
   const [metadata, setMetadata] = useState({});
   const [keyRows, setKeyRows] = useState([]);
-  const [requests, setRequests] = useState([]);
+  const [notes, setNotes] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [activeTab, setActiveTab] = useState("records");
@@ -74,39 +79,43 @@ export default function PatientDashboard() {
     setMetadata(merged);
 
     const headers = await createAuthHeaders(walletAddress);
-    const [keys, access, docs] = await Promise.all([
+    const [keys, noteResponse, docs] = await Promise.all([
       axios.get(`${API_URL}/api/record-keys/owned`, { headers }),
-      axios.get(`${API_URL}/api/access-requests`, { headers }),
+      axios.get(`${API_URL}/api/notes`, { headers }),
       axios.get(`${API_URL}/api/doctor-documents`, { headers }),
     ]);
     setKeyRows(keys.data);
-    setRequests(access.data);
+    setNotes(noteResponse.data);
     setDocuments(docs.data);
   }
 
   async function loadAuditTrail() {
-    const provider = await getBrowserProvider();
-    const contract = getContract(provider);
-    const filters = [
-      contract.filters.AccessGrantedToDoctor(walletAddress),
-      contract.filters.AccessRevokedFromDoctor(walletAddress),
-      contract.filters.AccessGrantedToInstitution(walletAddress),
-      contract.filters.AccessRevokedFromInstitution(walletAddress),
-      contract.filters.RecordAddedForPatient?.(walletAddress),
-    ].filter(Boolean);
-    const logs = (await Promise.all(filters.map((filter) => contract.queryFilter(filter, 0, "latest")))).flat();
-    const rows = await Promise.all(
-      logs.map(async (log) => {
-        const block = await provider.getBlock(log.blockNumber);
-        return {
-          action: log.fragment.name,
-          target: log.args.doctor || log.args.createdBy || log.args.institutionId?.toString() || "-",
-          recordId: Number(log.args.recordId),
-          timestamp: new Date(Number(block.timestamp) * 1000).toLocaleString(),
-        };
-      })
-    );
-    setAuditTrail(rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+    try {
+      const provider = await getBrowserProvider();
+      const contract = getContract(provider);
+      const filters = [
+        contract.filters.AccessGrantedToDoctor(walletAddress),
+        contract.filters.AccessRevokedFromDoctor(walletAddress),
+        contract.filters.AccessGrantedToInstitution(walletAddress),
+        contract.filters.AccessRevokedFromInstitution(walletAddress),
+        contract.filters.RecordAddedForPatient?.(walletAddress),
+      ].filter(Boolean);
+      const logs = (await Promise.all(filters.map((filter) => contract.queryFilter(filter, 0, "latest")))).flat();
+      const rows = await Promise.all(
+        logs.map(async (log) => {
+          const block = await provider.getBlock(log.blockNumber);
+          return {
+            action: log.fragment.name,
+            target: log.args.doctor || log.args.createdBy || log.args.institutionId?.toString() || "-",
+            recordId: Number(log.args.recordId),
+            timestamp: new Date(Number(block.timestamp) * 1000).toLocaleString(),
+          };
+        })
+      );
+      setAuditTrail(rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+    } catch (error) {
+      toast.error(error.reason || error.message || "Unable to load history");
+    }
   }
 
   useEffect(() => {
@@ -129,6 +138,7 @@ export default function PatientDashboard() {
     () =>
       records.filter((record) => {
         const meta = metadata[record.id] || {};
+        if (activeTab === "archive" && !meta.archived) return false;
         if (meta.archived && activeTab !== "archive") return false;
         return `${record.id} ${record.cid} ${meta.filename || ""} ${meta.title || ""} ${meta.category || ""}`
           .toLowerCase()
@@ -184,57 +194,62 @@ export default function PatientDashboard() {
     }
   }
 
-  async function updateRequest(id, status) {
-    await axios.patch(
-      `${API_URL}/api/access-requests/${id}`,
-      { status },
-      { headers: await createAuthHeaders(walletAddress) }
-    );
-    toast.success(`Request ${status}`);
-    await loadRecords();
-  }
-
   async function saveRecordMetadata(recordId, nextMeta) {
     const next = { ...(metadata[recordId] || {}), ...nextMeta };
     saveLocalMetadata(walletAddress, recordId, next);
-    await axios.post(
-      `${API_URL}/api/records/metadata`,
-      { recordId, ownerWallet: walletAddress, ...next },
-      { headers: await createAuthHeaders(walletAddress) }
-    );
-    setMetadata((current) => ({ ...current, [recordId]: next }));
+    try {
+      await axios.post(
+        `${API_URL}/api/records/metadata`,
+        { recordId, ownerWallet: walletAddress, ...next },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
+      setMetadata((current) => ({ ...current, [recordId]: next }));
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Unable to save record details");
+    }
   }
 
   async function saveProfile(event) {
     event.preventDefault();
-    await axios.post(
-      `${API_URL}/api/users/register`,
-      { wallet: walletAddress, name: userProfile.name, email: userProfile.email, role: "patient", ...profile },
-      { headers: await createAuthHeaders(walletAddress) }
-    );
-    await fetchProfile(walletAddress);
-    toast.success("Medical profile saved");
+    try {
+      await axios.post(
+        `${API_URL}/api/users/register`,
+        { wallet: walletAddress, name: userProfile.name, email: userProfile.email, role: "patient", ...profile },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
+      await fetchProfile(walletAddress);
+      toast.success("Medical profile saved");
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Unable to save profile");
+    }
   }
 
-  function downloadCarePdf(document) {
-    const blob = makePdf(document.title, [
-      `Type: ${document.documentType}`,
-      `Doctor: ${document.doctorWallet}`,
-      `Patient: ${document.patientWallet}`,
-      `Created: ${new Date(document.createdAt).toLocaleString()}`,
+  function downloadCarePdf(careDocument) {
+    const blob = makePdf(careDocument.title, [
+      `Type: ${careDocument.documentType}`,
+      `Doctor: ${careDocument.doctorWallet}`,
+      `Patient: ${careDocument.patientWallet}`,
+      `Created: ${new Date(careDocument.createdAt).toLocaleString()}`,
       "",
-      document.content || "Encrypted file is stored on IPFS.",
-      document.cid ? `IPFS CID: ${document.cid}` : "",
+      careDocument.content || "Encrypted file is stored on IPFS.",
+      careDocument.cid ? `IPFS CID: ${careDocument.cid}` : "",
     ]);
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = window.document.createElement("a");
     link.href = url;
-    link.download = `${document.title.replace(/[^a-z0-9_-]+/gi, "_")}.pdf`;
+    link.download = `${careDocument.title.replace(/[^a-z0-9_-]+/gi, "_")}.pdf`;
     link.click();
     URL.revokeObjectURL(url);
   }
 
   function renderRecords() {
+    const emptyTitle = activeTab === "archive" ? "No archived records" : "No records found";
+    const emptyMessage =
+      activeTab === "archive"
+        ? "Records you archive will appear here."
+        : search
+          ? "No records match your search."
+          : "Uploaded records will appear here.";
     return (
       <>
         <div className="toolbar">
@@ -249,7 +264,6 @@ export default function PatientDashboard() {
                 key={record.id}
                 record={record}
                 filename={meta.title || meta.filename}
-                aesKey={meta.aesKey}
                 onManageAccess={() => setSelectedRecord(record)}
                 actions={
                   <>
@@ -272,7 +286,8 @@ export default function PatientDashboard() {
           {filteredRecords.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No records found</strong>
+              <strong>{emptyTitle}</strong>
+              <span>{emptyMessage}</span>
             </div>
           )}
         </section>
@@ -291,11 +306,6 @@ export default function PatientDashboard() {
           <button className="icon-button secondary" onClick={loadRecords} aria-label="Refresh records">
             <RefreshCw size={16} />
           </button>
-          <label className="icon-button with-label upload-button">
-            <Upload size={16} />
-            Upload Record
-            <input type="file" accept="application/pdf,image/*" onChange={uploadRecord} hidden />
-          </label>
         </div>
       </div>
 
@@ -306,33 +316,44 @@ export default function PatientDashboard() {
         <StatCard icon={Clock3} label="Latest upload" value={lastUpload} />
       </section>
 
-      <section className="panel metadata-panel">
-        <label>
-          New upload category
-          <select value={uploadMeta.category} onChange={(event) => setUploadMeta({ ...uploadMeta, category: event.target.value })}>
-            <option value="lab">Lab</option>
-            <option value="prescription">Prescription</option>
-            <option value="diagnosis">Diagnosis</option>
-            <option value="imaging">Imaging</option>
-            <option value="other">Other</option>
-          </select>
-        </label>
-        <label>
-          Provider
-          <input value={uploadMeta.provider} onChange={(event) => setUploadMeta({ ...uploadMeta, provider: event.target.value })} />
-        </label>
-        <label className="inline-check">
-          <input
-            type="checkbox"
-            checked={uploadMeta.emergency}
-            onChange={(event) => setUploadMeta({ ...uploadMeta, emergency: event.target.checked })}
-          />
-          Emergency
-        </label>
+      <section className="panel upload-panel">
+        <div>
+          <h2>Upload details</h2>
+          <p>These details will be saved with the next record you upload.</p>
+        </div>
+        <div className="metadata-panel">
+          <label>
+            Category
+            <select value={uploadMeta.category} onChange={(event) => setUploadMeta({ ...uploadMeta, category: event.target.value })}>
+              <option value="lab">Lab</option>
+              <option value="prescription">Prescription</option>
+              <option value="diagnosis">Diagnosis</option>
+              <option value="imaging">Imaging</option>
+              <option value="other">Other</option>
+            </select>
+          </label>
+          <label>
+            Provider
+            <input value={uploadMeta.provider} onChange={(event) => setUploadMeta({ ...uploadMeta, provider: event.target.value })} />
+          </label>
+          <label className="inline-check">
+            <input
+              type="checkbox"
+              checked={uploadMeta.emergency}
+              onChange={(event) => setUploadMeta({ ...uploadMeta, emergency: event.target.checked })}
+            />
+            Emergency record
+          </label>
+          <label className="icon-button with-label upload-button">
+            <Upload size={16} />
+            Upload Record
+            <input type="file" accept="application/pdf,image/*" onChange={uploadRecord} hidden />
+          </label>
+        </div>
       </section>
 
       <div className="tabs">
-        {["records", "requests", "documents", "profile", "notifications", "audit"].map((tab) => (
+        {["records", "archive", "notes", "documents", "profile", "notifications", "audit"].map((tab) => (
           <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
             {tab[0].toUpperCase() + tab.slice(1)}
           </button>
@@ -340,26 +361,7 @@ export default function PatientDashboard() {
       </div>
 
       {activeTab === "records" && renderRecords()}
-      {activeTab === "requests" && (
-        <section className="panel request-list">
-          {requests.map((request) => (
-            <article className="request-row" key={request.id}>
-              <div>
-                <strong>Record #{request.recordId}</strong>
-                <span>{request.requesterWallet}</span>
-                <small>Status: {request.status}</small>
-                {request.reason && <p>{request.reason}</p>}
-              </div>
-              {request.status === "pending" && (
-                <div className="row-actions">
-                  <button onClick={() => updateRequest(request.id, "approved")}>Approve</button>
-                  <button className="secondary" onClick={() => updateRequest(request.id, "rejected")}>Reject</button>
-                </div>
-              )}
-            </article>
-          ))}
-        </section>
-      )}
+      {activeTab === "archive" && renderRecords()}
       {activeTab === "documents" && (
         <section className="panel request-list">
           {documents.map((document) => (
@@ -368,6 +370,7 @@ export default function PatientDashboard() {
                 <strong>{document.title}</strong>
                 <span>{document.documentType} from {document.doctorWallet}</span>
                 <small>{new Date(document.createdAt).toLocaleString()}</small>
+                {document.content && <p>{document.content}</p>}
               </div>
               <button className="icon-button with-label" onClick={() => downloadCarePdf(document)}>
                 <Download size={16} />
@@ -375,6 +378,34 @@ export default function PatientDashboard() {
               </button>
             </article>
           ))}
+          {documents.length === 0 && (
+            <div className="empty-state">
+              <FileText size={28} />
+              <strong>No care documents</strong>
+              <span>Documents sent by doctors will appear here.</span>
+            </div>
+          )}
+        </section>
+      )}
+      {activeTab === "notes" && (
+        <section className="panel request-list">
+          {notes.map((note) => (
+            <article className="request-row" key={note.id}>
+              <div>
+                <strong>Record #{note.recordId}</strong>
+                <span>{note.status}</span>
+                <small>Doctor: {note.doctorWallet}</small>
+                {note.note && <p>{note.note}</p>}
+              </div>
+            </article>
+          ))}
+          {notes.length === 0 && (
+            <div className="empty-state">
+              <FileText size={28} />
+              <strong>No doctor notes</strong>
+              <span>Notes added by doctors will appear here.</span>
+            </div>
+          )}
         </section>
       )}
       {activeTab === "profile" && (
@@ -393,26 +424,34 @@ export default function PatientDashboard() {
       {activeTab === "notifications" && <NotificationsPanel />}
       {activeTab === "audit" && (
         <section className="panel">
-          <table>
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>Target</th>
-                <th>Record ID</th>
-                <th>Timestamp</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditTrail.map((row, index) => (
-                <tr key={`${row.action}-${row.recordId}-${index}`}>
-                  <td>{row.action}</td>
-                  <td>{row.target}</td>
-                  <td>{row.recordId}</td>
-                  <td>{row.timestamp}</td>
+          {auditTrail.length > 0 ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Action</th>
+                  <th>Target</th>
+                  <th>Record ID</th>
+                  <th>Timestamp</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {auditTrail.map((row, index) => (
+                  <tr key={`${row.action}-${row.recordId}-${index}`}>
+                    <td>{row.action}</td>
+                    <td>{row.target}</td>
+                    <td>{row.recordId}</td>
+                    <td>{row.timestamp}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <div className="empty-state">
+              <History size={28} />
+              <strong>No history</strong>
+              <span>Access grants, revokes, and patient-created records will appear here.</span>
+            </div>
+          )}
         </section>
       )}
 
