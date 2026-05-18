@@ -1,6 +1,16 @@
 import { ethers } from "ethers";
 import "../../../shared/contractConfig";
 
+let activeWalletAddress = "";
+
+export function setActiveWallet(walletAddress) {
+  activeWalletAddress = walletAddress || "";
+}
+
+export function clearActiveWallet() {
+  activeWalletAddress = "";
+}
+
 function getConfig() {
   const config = window.HealthTrustContractConfig || {};
   return {
@@ -16,8 +26,11 @@ export async function getBrowserProvider() {
   return new ethers.BrowserProvider(window.ethereum);
 }
 
-export async function getSigner() {
+export async function getSigner(walletAddress = activeWalletAddress) {
   const provider = await getBrowserProvider();
+  if (walletAddress) {
+    return provider.getSigner(walletAddress);
+  }
   return provider.getSigner();
 }
 
@@ -32,6 +45,10 @@ export async function getSignedContract() {
 
 export async function addRecord(cid) {
   return (await getSignedContract()).addRecord(cid);
+}
+
+export async function addRecordForPatient(patientAddress, cid) {
+  return (await getSignedContract()).addRecordForPatient(patientAddress, cid);
 }
 
 export async function grantAccessToDoctor(recordId, doctorAddress) {

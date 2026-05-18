@@ -35,6 +35,7 @@ contract HealthTrust is Ownable {
     uint256 private nextInstitutionId = 1;
 
     event RecordAdded(address indexed patient, uint256 recordId, string cid, uint256 timestamp);
+    event RecordAddedForPatient(address indexed patient, address indexed createdBy, uint256 recordId, string cid, uint256 timestamp);
     event AccessGrantedToDoctor(address indexed patient, address indexed doctor, uint256 recordId);
     event AccessRevokedFromDoctor(address indexed patient, address indexed doctor, uint256 recordId);
     event AccessGrantedToInstitution(address indexed patient, uint256 institutionId, uint256 recordId);
@@ -54,22 +55,34 @@ contract HealthTrust is Ownable {
     }
 
     function addRecord(string memory cid) external {
+        _addRecordFor(msg.sender, cid, msg.sender);
+    }
+
+    function addRecordForPatient(address patient, string memory cid) external {
+        require(patient != address(0), "Patient wallet is required");
+        _addRecordFor(patient, cid, msg.sender);
+    }
+
+    function _addRecordFor(address patient, string memory cid, address createdBy) internal {
         require(bytes(cid).length > 0, "CID is required");
 
         uint256 recordId = nextRecordId++;
         Record memory newRecord = Record({
             id: recordId,
             cid: cid,
-            uploadedBy: msg.sender,
+            uploadedBy: patient,
             timestamp: block.timestamp
         });
 
-        patientRecords[msg.sender].push(newRecord);
+        patientRecords[patient].push(newRecord);
         recordsById[recordId] = newRecord;
-        recordOwners[recordId] = msg.sender;
+        recordOwners[recordId] = patient;
         allRecordIds.push(recordId);
 
-        emit RecordAdded(msg.sender, recordId, cid, block.timestamp);
+        emit RecordAdded(patient, recordId, cid, block.timestamp);
+        if (createdBy != patient) {
+            emit RecordAddedForPatient(patient, createdBy, recordId, cid, block.timestamp);
+        }
     }
 
     function grantAccessToDoctor(uint256 recordId, address doctorAddress) external onlyRecordOwner(recordId) {

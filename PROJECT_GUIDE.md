@@ -2,21 +2,23 @@
 
 ## Abstract
 
-The healthcare system in the Kurdistan region still faces many problems
-in managing and sharing patient records safely between hospitals and
-clinics. To solve this, our project introduces HealthTrust, a system
-that uses blockchain and machine learning to make health data more
-secure and useful. Blockchain helps protect medical records from being
-changed or accessed without permission, giving patients full control
-over their information. At the same time, machine learning analyzes
-medical data without showing personal details to predict possible
-diseases and help doctors make better decisions. With this project, we
-aim to make healthcare in Kurdistan more secure, transparent, and
-intelligent.
+The healthcare system in the Kurdistan region still faces problems in
+safe record sharing between hospitals and clinics. HealthTrust is a
+prototype that combines client-side encryption, IPFS/Pinata storage,
+Sepolia smart-contract permissions, and a diabetes-risk ML service.
+Blockchain does not store the files themselves; encrypted files go to
+IPFS, while only CIDs, permissions, and tamper-resistant audit events go
+on-chain. Patients control on-chain permissions, but revocation cannot
+erase copies already decrypted or downloaded by an authorized doctor.
+The ML service predicts diabetes risk only from eight medical vitals and
+does not receive patient identity or full uploaded medical files by
+default. The result is not a clinical diagnosis.
 
 ## 1. PROJECT OVERVIEW
 
-HealthTrust is a decentralized medical record system designed for patients, doctors, hospitals, and clinics. In plain English, it gives patients a way to upload medical records securely, decide exactly who can access each record, and keep a permanent history of permission changes. It also gives doctors a simple diabetes prediction tool based on eight medical vitals. The project combines a React frontend, a Node.js backend, a Solidity smart contract, IPFS storage through Pinata, PostgreSQL identity records managed through Prisma, and a Python FastAPI machine learning service.
+HealthTrust is a decentralized medical record system designed for patients, doctors, hospitals, and clinics. In plain English, it gives patients a way to upload medical records securely, decide exactly who can access each record, and keep a permanent history of permission changes. It also gives doctors a simple diabetes prediction tool based on eight medical vitals. The project combines a React frontend, a Node.js backend, a Solidity smart contract, IPFS storage through Pinata, PostgreSQL identity/workflow records managed through Prisma, and a Python FastAPI machine learning service.
+
+Current restored workflows include patient access overview, encrypted key envelopes, access requests, doctor notes, doctor-created care documents, patient PDF download for care documents, institution shared-record view, doctor membership requests, notifications, metadata editing, and prediction history. The system uses signed wallet sessions for backend routes so ordinary UI actions do not trigger MetaMask every time.
 
 The healthcare context in the Kurdistan region creates a practical need for this type of system. Patient records are often separated between hospitals, clinics, and doctors. Sharing can be slow, duplicated, paper-based, or dependent on manual trust. A patient may visit one clinic, then another hospital, and the second provider may not have the earlier record. This can delay treatment and create confusion. HealthTrust addresses this by giving the patient a digital record list and access controls that can be checked by any connected system.
 
@@ -64,11 +66,11 @@ FastAPI ML Service
   v
 Diabetes prediction and probability
 
-Patient upload flow: the patient connects MetaMask, chooses a PDF or image, and signs a fixed message in the browser. The signature and wallet address are used to derive an AES key. The file is encrypted before it leaves the browser. The encrypted text blob is sent to the Express backend. The backend pins it to IPFS through Pinata and receives a CID. The frontend then calls addRecord on the smart contract with that CID. The contract stores the record ID, CID, uploader address, and timestamp, then emits RecordAdded.
+Patient upload flow: the patient connects MetaMask, chooses a PDF or image, and the browser creates an AES key for that record. The file is encrypted before it leaves the browser. The encrypted text blob is sent to the Express backend. The backend pins it to IPFS through Pinata and receives a CID. The frontend then calls addRecord on the smart contract with that CID. The contract stores the record ID, CID, owner address, and timestamp, then emits RecordAdded. The AES key can be wrapped into an encrypted key envelope for each approved doctor.
 
 Patient grants doctor access flow: the patient opens the access modal for a specific record. The patient enters a doctor wallet address and confirms the grant transaction in MetaMask. The smart contract checks that the caller owns the record. If valid, it updates the recordId to doctorAddress permission mapping and emits AccessGrantedToDoctor. Revocation works the same way, except the mapping value becomes false and AccessRevokedFromDoctor is emitted.
 
-Doctor views and decrypts flow: the doctor connects MetaMask and opens the accessible records tab. The frontend reads all records from the smart contract and checks hasAccess for the doctor wallet. If the doctor has direct access or belongs to an institution that was granted access, the record appears. The doctor fetches the encrypted blob from the IPFS gateway using the CID. Because encryption is client-side and the backend never stores plaintext, the doctor needs the patient-provided AES key or original signature through an approved real-world sharing process. The frontend decrypts the blob in the browser and opens the file.
+Doctor views and decrypts flow: the doctor connects MetaMask and opens the accessible records tab. The frontend reads all records from the smart contract and checks hasAccess for the doctor wallet. If the doctor has direct access or belongs to an institution that was granted access, the record appears. The doctor fetches the encrypted blob from the IPFS gateway using the CID. Because encryption is client-side and the backend never stores plaintext, the doctor needs an encrypted key envelope created for that wallet. The frontend asks MetaMask to decrypt the envelope, then decrypts the file in the browser and opens it.
 
 Doctor prediction flow: the doctor opens the diabetes prediction tab and enters Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, and Age. The frontend posts the data to the backend route. The backend forwards the request to the FastAPI service. FastAPI loads model.pkl, runs the RandomForestClassifier prediction, and returns prediction and probability. The frontend displays Diabetic or Non-Diabetic and a green, yellow, or red risk meter.
 
@@ -87,6 +89,7 @@ OpenZeppelin Ownable is included as a trusted access-control base contract. In t
 | Function | Plain-English explanation | Gas cost |
 | --- | --- | --- |
 | addRecord | Stores a new CID for the patient who submits the transaction. | Costs gas |
+| addRecordForPatient | Lets a doctor create a patient-owned record, such as a prescription or follow-up document. | Costs gas |
 | grantAccessToDoctor | Gives one doctor wallet access to one record. | Costs gas |
 | revokeAccessFromDoctor | Removes one doctor wallet’s access to one record. | Costs gas |
 | grantAccessToInstitution | Gives all doctors in one institution access to one record. | Costs gas |
@@ -170,6 +173,21 @@ Express is the Node.js web framework used for the backend. The backend connects 
 | GET | /api/institutions | Return registered institutions from PostgreSQL. | Registration, modal, dashboard |
 | GET | /api/institutions/:id/doctors | Return institution doctors from the smart contract. | Institution dashboard |
 | POST | /api/predict | Forward diabetes vitals to FastAPI. | Doctor dashboard |
+| GET | /api/predict/history | Return saved prediction history for the signed doctor. | Doctor dashboard |
+| POST | /api/records/metadata | Save record title, category, provider, notes, and flags. | Patient or creating doctor |
+| GET | /api/records/metadata/bulk | Fetch metadata for several record IDs. | Dashboards |
+| POST | /api/record-keys | Store an encrypted AES key envelope. | Patient or creating doctor |
+| GET | /api/record-keys/:recordId | Fetch the signed wallet's key envelope for a record. | Doctor or patient |
+| GET | /api/access-requests | Fetch patient/doctor/institution access requests. | Signed user |
+| POST | /api/access-requests | Create an access request. | Doctor or institution |
+| PATCH | /api/access-requests/:id | Approve or reject access request status. | Patient |
+| POST | /api/notes | Save a doctor note for a record. | Doctor |
+| GET | /api/notes | Fetch notes involving the signed wallet. | Patient or doctor |
+| POST | /api/membership-requests | Request to join an institution. | Doctor |
+| PATCH | /api/membership-requests/:id | Approve or reject doctor membership. | Institution admin |
+| POST | /api/doctor-documents | Send a care document to a patient. | Doctor |
+| GET | /api/doctor-documents | Fetch care documents involving the signed wallet. | Patient or doctor |
+| GET | /api/notifications | Fetch signed wallet notifications. | Signed user |
 
 Prisma is the database toolkit used to define the PostgreSQL schema and query the database from Node.js. It defines User and Institution models, validates role and institution type enums at the schema layer, and generates a type-aware client used by the controllers. Multer handles multipart file uploads. In this system it stores encrypted uploads in memory long enough for the backend to forward them to Pinata.
 
@@ -177,7 +195,7 @@ ethers.js is used server-side for read calls and optional proxy write routes. So
 
 ## 8. FRONTEND
 
-The frontend is a React app. Register.js lets a wallet owner create a patient, doctor, or institution admin profile. PatientDashboard.js lets patients upload encrypted records, view their own records, manage access, and view audit events. DoctorDashboard.js lets doctors see accessible records and submit diabetes predictions. InstitutionDashboard.js lets institution admins register their institution and manage doctors.
+The frontend is a React app. Register.js lets a wallet owner create a patient, doctor, or institution admin profile and register an encryption public key for secure key envelopes. PatientDashboard.js lets patients upload encrypted records, view their own records, manage access, respond to requests, edit metadata/profile details, view doctor care documents, download care documents as PDFs, see notifications, and view audit events. DoctorDashboard.js lets doctors request access, join institutions, decrypt accessible records, save notes, create care documents, and submit diabetes predictions. InstitutionDashboard.js lets institution admins register their institution, manage doctors, approve membership requests, request patient record access, and view institution-shared records.
 
 Navbar.js shows the connected wallet, user name, and role. RecordCard.js displays one record with CID and timestamp. AccessModal.js contains doctor and institution tabs for grant and revoke actions. PredictionForm.js renders the eight input fields. RiskMeter.js renders the probability bar.
 

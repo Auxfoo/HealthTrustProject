@@ -4,6 +4,10 @@ export function deriveKey(walletAddress, signature) {
   return CryptoJS.SHA256(`${walletAddress.toLowerCase()}:${signature}`).toString();
 }
 
+export function generateRandomKey() {
+  return CryptoJS.lib.WordArray.random(32).toString();
+}
+
 function arrayBufferToWordArray(buffer) {
   const bytes = new Uint8Array(buffer);
   const words = [];

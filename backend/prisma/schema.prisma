@@ -19,13 +19,18 @@ enum InstitutionType {
 }
 
 model User {
-  id            Int      @id @default(autoincrement())
-  wallet        String   @unique
-  name          String
-  email         String
-  role          UserRole
-  institutionId Int?
-  createdAt     DateTime @default(now())
+  id                  Int      @id @default(autoincrement())
+  wallet              String   @unique
+  name                String
+  email               String
+  role                UserRole
+  institutionId       Int?
+  encryptionPublicKey String?
+  bloodType           String?
+  allergies           String?
+  chronicConditions   String?
+  emergencyContact    String?
+  createdAt           DateTime @default(now())
 
   @@map("users")
 }
@@ -39,4 +44,119 @@ model Institution {
   createdAt       DateTime        @default(now())
 
   @@map("institutions")
+}
+
+model RecordMetadata {
+  id          Int      @id @default(autoincrement())
+  recordId    Int      @unique
+  ownerWallet String
+  filename    String?
+  mimeType    String?
+  title       String?
+  category    String   @default("other")
+  provider    String?
+  visitDate   DateTime?
+  notes       String?
+  archived    Boolean  @default(false)
+  important   Boolean  @default(false)
+  emergency   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("record_metadata")
+}
+
+model RecordKey {
+  id              Int      @id @default(autoincrement())
+  recordId        Int
+  ownerWallet     String
+  recipientWallet String
+  encryptedKey    String   @db.Text
+  accessType      String   @default("doctor")
+  accessTarget    String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([recordId, recipientWallet])
+  @@map("record_keys")
+}
+
+model AccessRequest {
+  id              Int      @id @default(autoincrement())
+  recordId        Int
+  patientWallet   String
+  requesterWallet String
+  requestType     String   @default("doctor")
+  institutionId   Int?
+  reason          String?
+  status          String   @default("pending")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("access_requests")
+}
+
+model DoctorNote {
+  id            Int      @id @default(autoincrement())
+  recordId      Int
+  patientWallet String
+  doctorWallet  String
+  status        String   @default("reviewed")
+  note          String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([recordId, doctorWallet])
+  @@map("doctor_notes")
+}
+
+model PredictionHistory {
+  id            Int      @id @default(autoincrement())
+  doctorWallet  String
+  patientWallet String?
+  prediction    Int
+  probability   Float
+  features      Json
+  createdAt     DateTime @default(now())
+
+  @@map("prediction_history")
+}
+
+model InstitutionJoinRequest {
+  id            Int      @id @default(autoincrement())
+  institutionId Int
+  doctorWallet  String
+  message       String?
+  status        String   @default("pending")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("institution_join_requests")
+}
+
+model DoctorDocument {
+  id           Int      @id @default(autoincrement())
+  patientWallet String
+  doctorWallet  String
+  recordId      Int?
+  cid           String?
+  encrypted     Boolean  @default(false)
+  documentType  String
+  title         String
+  content       String   @db.Text
+  createdAt     DateTime @default(now())
+
+  @@map("doctor_documents")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  wallet    String
+  type      String
+  title     String
+  message   String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@map("notifications")
 }

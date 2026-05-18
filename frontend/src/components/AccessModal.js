@@ -1,17 +1,26 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Building2, Stethoscope, X } from "lucide-react";
+import { Building2, Clipboard, KeyRound, RotateCw, Stethoscope, X } from "lucide-react";
+import { ethers } from "ethers";
 import { useWallet } from "../context/WalletContext";
 import {
+  getInstitutionDoctors,
   grantAccessToDoctor,
   grantAccessToInstitution,
   revokeAccessFromDoctor,
   revokeAccessFromInstitution,
 } from "../utils/contractHelper";
+import {
+  buildDoctorKeyEnvelope,
+  buildInstitutionKeyEnvelopes,
+  deleteKeyEnvelope,
+  storeKeyEnvelope,
+  storeKeyEnvelopes,
+} from "../utils/recordSharing";
 
-export default function AccessModal({ record, onClose }) {
-  const { API_URL } = useWallet();
+export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, onClose }) {
+  const { API_URL, walletAddress } = useWallet();
   const [activeTab, setActiveTab] = useState("doctor");
   const [doctorAddress, setDoctorAddress] = useState("");
   const [institutionId, setInstitutionId] = useState("");
@@ -24,12 +33,22 @@ export default function AccessModal({ record, onClose }) {
     });
   }, [API_URL]);
 
-  async function runTransaction(action, pendingMessage, successMessage) {
+  const directKeys = keyRows.filter((key) => key.recordId === record.id && key.accessType === "doctor");
+  const institutionKeys = keyRows.filter((key) => key.recordId === record.id && key.accessType === "institution");
+
+  async function copyWallet(address) {
+    await navigator.clipboard.writeText(address);
+    toast.success("Wallet copied");
+  }
+
+  async function runTransaction(action, pendingMessage, successMessage, after) {
     const toastId = toast.loading(pendingMessage);
     try {
       const tx = await action();
       await tx.wait();
+      if (after) await after();
       toast.update(toastId, { render: successMessage, type: "success", isLoading: false, autoClose: 3000 });
+      if (onRefresh) await onRefresh();
     } catch (error) {
       toast.update(toastId, {
         render: error.reason || error.message,
@@ -38,6 +57,62 @@ export default function AccessModal({ record, onClose }) {
         autoClose: 5000,
       });
     }
+  }
+
+  async function shareDoctorKey(target = doctorAddress) {
+    if (!aesKey) throw new Error("AES key is not available in this browser. Re-upload or paste the key first.");
+    const envelope = await buildDoctorKeyEnvelope(API_URL, walletAddress, target, record, aesKey);
+    await storeKeyEnvelope(API_URL, walletAddress, envelope);
+  }
+
+  async function grantDoctor() {
+    if (!ethers.isAddress(doctorAddress)) {
+      toast.error("Enter a valid doctor wallet address");
+      return;
+    }
+    await runTransaction(
+      () => grantAccessToDoctor(record.id, doctorAddress),
+      "Granting doctor access...",
+      "Doctor access granted",
+      () => shareDoctorKey(doctorAddress)
+    );
+  }
+
+  async function revokeDoctor(target = doctorAddress) {
+    if (!ethers.isAddress(target)) {
+      toast.error("Enter a valid doctor wallet address");
+      return;
+    }
+    await runTransaction(
+      () => revokeAccessFromDoctor(record.id, target),
+      "Revoking doctor access...",
+      "Doctor access revoked",
+      () => deleteKeyEnvelope(API_URL, walletAddress, { recordId: record.id, recipientWallet: target })
+    );
+  }
+
+  async function grantInstitution() {
+    const institution = institutions.find((item) => String(item.institutionId) === String(institutionId));
+    if (!institution) return toast.error("Choose an institution");
+    await runTransaction(
+      () => grantAccessToInstitution(record.id, institution.institutionId),
+      "Granting institution access...",
+      "Institution access granted",
+      async () => {
+        const doctors = await getInstitutionDoctors(institution.institutionId);
+        const envelopes = await buildInstitutionKeyEnvelopes(API_URL, institution, doctors, record, aesKey);
+        await storeKeyEnvelopes(API_URL, walletAddress, envelopes);
+      }
+    );
+  }
+
+  async function revokeInstitution(target = institutionId) {
+    await runTransaction(
+      () => revokeAccessFromInstitution(record.id, target),
+      "Revoking institution access...",
+      "Institution access revoked",
+      () => deleteKeyEnvelope(API_URL, walletAddress, { recordId: record.id, accessType: "institution", accessTarget: String(target) })
+    );
   }
 
   return (
@@ -58,14 +133,16 @@ export default function AccessModal({ record, onClose }) {
             <Stethoscope size={16} />
             Doctor
           </button>
-          <button
-            className={activeTab === "institution" ? "active" : ""}
-            onClick={() => setActiveTab("institution")}
-          >
+          <button className={activeTab === "institution" ? "active" : ""} onClick={() => setActiveTab("institution")}>
             <Building2 size={16} />
             Institution
           </button>
         </div>
+
+        <p className="notice">
+          Revoking access stops future authorized access and removes shared encrypted keys. It cannot remove copies that were
+          already decrypted or downloaded.
+        </p>
 
         {activeTab === "doctor" ? (
           <div className="form-grid">
@@ -74,29 +151,30 @@ export default function AccessModal({ record, onClose }) {
               <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} />
             </label>
             <div className="button-row">
-              <button
-                onClick={() =>
-                  runTransaction(
-                    () => grantAccessToDoctor(record.id, doctorAddress),
-                    "Granting doctor access...",
-                    "Doctor access granted"
-                  )
-                }
-              >
-                Grant
-              </button>
-              <button
-                className="secondary"
-                onClick={() =>
-                  runTransaction(
-                    () => revokeAccessFromDoctor(record.id, doctorAddress),
-                    "Revoking doctor access...",
-                    "Doctor access revoked"
-                  )
-                }
-              >
+              <button onClick={grantDoctor}>Grant</button>
+              <button className="secondary" onClick={() => revokeDoctor()}>
                 Revoke
               </button>
+            </div>
+            <h3>Doctors with key envelopes</h3>
+            <div className="request-list">
+              {directKeys.map((key) => (
+                <div className="request-row" key={key.id}>
+                  <span>{key.recipientWallet}</span>
+                  <div className="row-actions">
+                    <button className="icon-button ghost" onClick={() => copyWallet(key.recipientWallet)} aria-label="Copy wallet">
+                      <Clipboard size={16} />
+                    </button>
+                    <button className="icon-button ghost" onClick={() => shareDoctorKey(key.recipientWallet)} aria-label="Resend key">
+                      <RotateCw size={16} />
+                    </button>
+                    <button className="secondary" onClick={() => revokeDoctor(key.recipientWallet)}>
+                      Revoke
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {directKeys.length === 0 && <span className="muted">No direct key envelopes yet.</span>}
             </div>
           </div>
         ) : (
@@ -112,29 +190,24 @@ export default function AccessModal({ record, onClose }) {
               </select>
             </label>
             <div className="button-row">
-              <button
-                onClick={() =>
-                  runTransaction(
-                    () => grantAccessToInstitution(record.id, institutionId),
-                    "Granting institution access...",
-                    "Institution access granted"
-                  )
-                }
-              >
+              <button onClick={grantInstitution}>
+                <KeyRound size={16} />
                 Grant
               </button>
-              <button
-                className="secondary"
-                onClick={() =>
-                  runTransaction(
-                    () => revokeAccessFromInstitution(record.id, institutionId),
-                    "Revoking institution access...",
-                    "Institution access revoked"
-                  )
-                }
-              >
+              <button className="secondary" onClick={() => revokeInstitution()}>
                 Revoke
               </button>
+            </div>
+            <h3>Institution key envelopes</h3>
+            <div className="request-list">
+              {institutionKeys.map((key) => (
+                <div className="request-row" key={key.id}>
+                  <span>
+                    Institution #{key.accessTarget} doctor {key.recipientWallet}
+                  </span>
+                </div>
+              ))}
+              {institutionKeys.length === 0 && <span className="muted">No institution key envelopes yet.</span>}
             </div>
           </div>
         )}

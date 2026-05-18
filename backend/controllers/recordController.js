@@ -1,6 +1,7 @@
 const axios = require("axios");
 const FormData = require("form-data");
 const { ethers } = require("ethers");
+const prisma = require("../lib/prisma");
 const contractConfig = require("../../shared/contractConfig");
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || contractConfig.CONTRACT_ADDRESS;
@@ -59,8 +60,87 @@ exports.getRecordsByWallet = async (req, res) => {
       .map(serializeRecord)
       .filter((record) => record.uploadedBy.toLowerCase() === wallet);
 
-    res.json(filtered);
+    const metadataRows = await prisma.recordMetadata.findMany({
+      where: { recordId: { in: filtered.map((record) => record.id) } },
+    });
+    const metadataById = Object.fromEntries(metadataRows.map((row) => [row.recordId, row]));
+
+    res.json(filtered.map((record) => ({ ...record, metadata: metadataById[record.id] || null })));
   } catch (error) {
     res.status(500).json({ message: "Unable to fetch records from blockchain", error: error.message });
+  }
+};
+
+exports.upsertMetadata = async (req, res) => {
+  try {
+    const { recordId, ownerWallet, filename, mimeType, title, category, provider, visitDate, notes, archived, important, emergency } =
+      req.body;
+    if (!recordId || !ownerWallet) {
+      return res.status(400).json({ message: "recordId and ownerWallet are required" });
+    }
+
+    const normalizedOwner = ownerWallet.toLowerCase();
+    const authWallet = req.authWallet?.toLowerCase();
+    const records = await getReadContract().getAllRecords();
+    const record = records.map(serializeRecord).find((item) => item.id === Number(recordId));
+    const onChainOwner = record?.uploadedBy?.toLowerCase?.();
+    const isOwner = normalizedOwner === authWallet || onChainOwner === authWallet;
+    const canDeliverDoctorRecord = onChainOwner === normalizedOwner && authWallet && authWallet !== normalizedOwner;
+    if (!isOwner && !canDeliverDoctorRecord) {
+      return res.status(403).json({ message: "Only the record owner or creating clinician can save metadata" });
+    }
+
+    const metadata = await prisma.recordMetadata.upsert({
+      where: { recordId: Number(recordId) },
+      update: {
+        ownerWallet: normalizedOwner,
+        filename,
+        mimeType,
+        title,
+        category: category || "other",
+        provider,
+        visitDate: visitDate ? new Date(visitDate) : null,
+        notes,
+        archived: Boolean(archived),
+        important: Boolean(important),
+        emergency: Boolean(emergency),
+      },
+      create: {
+        recordId: Number(recordId),
+        ownerWallet: normalizedOwner,
+        filename,
+        mimeType,
+        title,
+        category: category || "other",
+        provider,
+        visitDate: visitDate ? new Date(visitDate) : null,
+        notes,
+        archived: Boolean(archived),
+        important: Boolean(important),
+        emergency: Boolean(emergency),
+      },
+    });
+
+    res.json(metadata);
+  } catch (error) {
+    res.status(500).json({ message: "Unable to save record metadata", error: error.message });
+  }
+};
+
+exports.getMetadataByIds = async (req, res) => {
+  try {
+    const ids = String(req.query.ids || "")
+      .split(",")
+      .map((id) => Number(id.trim()))
+      .filter(Boolean);
+    if (!ids.length) return res.json([]);
+
+    const metadata = await prisma.recordMetadata.findMany({
+      where: { recordId: { in: ids } },
+      orderBy: { updatedAt: "desc" },
+    });
+    res.json(metadata);
+  } catch (error) {
+    res.status(500).json({ message: "Unable to fetch record metadata", error: error.message });
   }
 };

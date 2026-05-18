@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Send } from "lucide-react";
 import { useWallet } from "../context/WalletContext";
+import { createAuthHeaders } from "../utils/auth";
 
 const initialValues = {
   Pregnancies: "",
@@ -15,9 +16,10 @@ const initialValues = {
 };
 
 export default function PredictionForm({ onResult, values, onValuesChange }) {
-  const { API_URL } = useWallet();
+  const { API_URL, walletAddress } = useWallet();
   const [localValues, setLocalValues] = useState(initialValues);
   const [loading, setLoading] = useState(false);
+  const [patientWallet, setPatientWallet] = useState("");
   const formValues = values || localValues;
 
   useEffect(() => {
@@ -44,7 +46,11 @@ export default function PredictionForm({ onResult, values, onValuesChange }) {
     );
 
     try {
-      const response = await axios.post(`${API_URL}/api/predict`, payload);
+      const response = await axios.post(
+        `${API_URL}/api/predict`,
+        { ...payload, patientWallet: patientWallet || undefined },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
       onResult(response.data);
     } finally {
       setLoading(false);
@@ -53,6 +59,10 @@ export default function PredictionForm({ onResult, values, onValuesChange }) {
 
   return (
     <form className="prediction-form" onSubmit={submit}>
+      <label>
+        Patient wallet
+        <input value={patientWallet} onChange={(event) => setPatientWallet(event.target.value)} placeholder="Optional" />
+      </label>
       {Object.keys(initialValues).map((field) => (
         <label key={field}>
           {field}

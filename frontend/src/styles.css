@@ -42,7 +42,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -86,7 +87,8 @@ button:disabled {
 }
 
 input,
-select {
+select,
+textarea {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 6px;
@@ -94,6 +96,11 @@ select {
   min-height: 42px;
   padding: 0.65rem 0.75rem;
   width: 100%;
+}
+
+textarea {
+  min-height: 92px;
+  resize: vertical;
 }
 
 label {
@@ -340,6 +347,32 @@ td {
   padding: 1.25rem;
 }
 
+.panel-title-row,
+.split-panel,
+.metadata-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.panel-title-row {
+  align-items: center;
+  grid-template-columns: 1fr auto;
+}
+
+.panel-title-row h2,
+.request-list h3 {
+  margin: 0;
+}
+
+.split-panel {
+  grid-template-columns: minmax(280px, 0.9fr) minmax(320px, 1.1fr);
+}
+
+.metadata-panel {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 1rem;
+}
+
 .panel.narrow {
   margin: 1.5rem auto;
   max-width: 640px;
@@ -468,6 +501,73 @@ td {
   gap: 0.6rem;
 }
 
+.request-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.request-row {
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  padding: 0.85rem;
+}
+
+.request-row.unread {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.request-row div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.request-row span,
+.request-row small,
+.muted {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.request-row p,
+.notice {
+  color: var(--muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.notice {
+  background: var(--primary-soft);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--text);
+  margin-bottom: 1rem;
+  padding: 0.85rem;
+}
+
+.inline-check {
+  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.inline-check input {
+  min-height: auto;
+  width: auto;
+}
+
+.badge {
+  background: var(--primary-soft);
+  border-radius: 999px;
+  color: var(--primary-strong);
+  padding: 0.35rem 0.55rem;
+  white-space: nowrap;
+}
+
 .doctor-row {
   align-items: center;
   border: 1px solid var(--line);
@@ -525,6 +625,7 @@ td {
   .dashboard-header,
   .record-card,
   .doctor-row,
+  .request-row,
   .inline-form,
   .service-strip {
     align-items: stretch;
@@ -532,6 +633,10 @@ td {
   }
 
   .record-card {
+    grid-template-columns: 1fr;
+  }
+
+  .split-panel {
     grid-template-columns: 1fr;
   }
 

@@ -46,7 +46,7 @@ pip install -r requirements.txt
 createdb -U postgres healthtrust
 cd ..\backend
 npx prisma generate
-npx prisma migrate dev --name init
+npx prisma migrate deploy
 ```
 
 ## 5. Prepare ML dataset
@@ -78,6 +78,9 @@ npx hardhat run scripts/deploy.js --network sepolia
 ```
 
 Copy the deployed address into `backend\.env` as `CONTRACT_ADDRESS`.
+The deploy script also updates `shared\contractConfig.js`. If the contract
+changes, redeploy before testing doctor-created patient records because that
+flow uses `addRecordForPatient`.
 
 ## 7. Run the app
 
@@ -104,3 +107,25 @@ Open:
 ```text
 http://localhost:5173
 ```
+
+## 8. Quick verification
+
+```powershell
+cd backend
+npm test
+
+cd ..\blockchain
+npm test
+
+cd ..\frontend
+npm run build
+```
+
+## Current prototype features
+
+- Patient: encrypted upload, metadata, access overview, revoke/resend key, requests, care-doc PDF download, notifications, audit trail.
+- Doctor: request access, decrypt shared records, notes, diabetes prediction/history, membership request, send care documents.
+- Institution: doctor membership approvals, doctor management, access requests, shared-record overview, notifications.
+
+Remember that Sepolia is a testnet. Revocation stops future authorized access
+but cannot erase copies that were already downloaded or decrypted.

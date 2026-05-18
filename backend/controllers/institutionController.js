@@ -41,6 +41,9 @@ exports.registerInstitution = async (req, res) => {
     if (!name || !institutionType || !adminWallet) {
       return res.status(400).json({ message: "name, institutionType, and adminWallet are required" });
     }
+    if (req.authWallet && req.authWallet !== adminWallet.toLowerCase()) {
+      return res.status(403).json({ message: "Signed wallet must match institution admin wallet" });
+    }
 
     let onChainId = institutionId ? Number(institutionId) : null;
     let transactionHash = null;

@@ -2,13 +2,27 @@ const prisma = require("../lib/prisma");
 
 exports.registerUser = async (req, res) => {
   try {
-    const { wallet, name, email, role, institutionId } = req.body;
+    const {
+      wallet,
+      name,
+      email,
+      role,
+      institutionId,
+      encryptionPublicKey,
+      bloodType,
+      allergies,
+      chronicConditions,
+      emergencyContact,
+    } = req.body;
 
     if (!wallet || !name || !email || !role) {
       return res.status(400).json({ message: "wallet, name, email, and role are required" });
     }
 
     const normalizedWallet = wallet.toLowerCase();
+    if (req.authWallet !== normalizedWallet) {
+      return res.status(403).json({ message: "Signed wallet does not match registration wallet" });
+    }
     const user = await prisma.user.upsert({
       where: { wallet: normalizedWallet },
       update: {
@@ -16,6 +30,11 @@ exports.registerUser = async (req, res) => {
         email,
         role,
         institutionId: institutionId === undefined || institutionId === "" ? null : Number(institutionId),
+        encryptionPublicKey,
+        bloodType,
+        allergies,
+        chronicConditions,
+        emergencyContact,
       },
       create: {
         wallet: normalizedWallet,
@@ -23,6 +42,11 @@ exports.registerUser = async (req, res) => {
         email,
         role,
         institutionId: institutionId === undefined || institutionId === "" ? null : Number(institutionId),
+        encryptionPublicKey,
+        bloodType,
+        allergies,
+        chronicConditions,
+        emergencyContact,
       },
     });
 

@@ -2,17 +2,17 @@
 
 ## Abstract
 
-The healthcare system in the Kurdistan region still faces many problems
-in managing and sharing patient records safely between hospitals and
-clinics. To solve this, our project introduces HealthTrust, a system
-that uses blockchain and machine learning to make health data more
-secure and useful. Blockchain helps protect medical records from being
-changed or accessed without permission, giving patients full control
-over their information. At the same time, machine learning analyzes
-medical data without showing personal details to predict possible
-diseases and help doctors make better decisions. With this project, we
-aim to make healthcare in Kurdistan more secure, transparent, and
-intelligent.
+The healthcare system in the Kurdistan region still faces problems in
+safe record sharing between hospitals and clinics. HealthTrust is a
+prototype that combines client-side encryption, IPFS/Pinata storage,
+Sepolia smart-contract permissions, and a diabetes-risk ML service.
+Blockchain does not store the files themselves; encrypted files go to
+IPFS, while only CIDs, permissions, and tamper-resistant audit events go
+on-chain. Patients control on-chain permissions, but revocation cannot
+erase copies already decrypted or downloaded by an authorized doctor.
+The ML service predicts diabetes risk only from eight medical vitals and
+does not receive patient identity or full uploaded medical files by
+default. The result is not a clinical diagnosis.
 
 ## Overview
 
@@ -183,16 +183,17 @@ npm start
 
 ## Usage Walkthrough
 
-Patient flow: connect MetaMask, register as a patient, choose a PDF or image, sign the encryption message, upload the encrypted record, confirm `addRecord(cid)` in MetaMask, then open Manage Access to grant a doctor wallet or institution ID access.
+Patient flow: connect MetaMask, register as a patient, register the MetaMask encryption public key, choose a PDF or image, upload the encrypted record, confirm `addRecord(cid)` in MetaMask, then open Manage Access to grant a doctor wallet or institution access. Patients can review key-sharing status, revoke future access, respond to access requests, edit medical profile details, see notifications, and download doctor care documents as PDFs.
 
-Doctor flow: connect MetaMask, register as a doctor, optionally choose an institution, view records where direct or institution access was granted, decrypt authorized records using the patient-provided AES key or signature, and submit the 8 diabetes vitals to view Diabetic or Non-Diabetic with a probability meter.
+Doctor flow: connect MetaMask, register as a doctor, request record access, request institution membership, view records where direct or institution access was granted, decrypt authorized records through encrypted key envelopes, add notes, send care documents to patients, and submit the eight diabetes vitals to view a non-clinical diabetes risk result.
 
-Institution flow: connect MetaMask, register as an institution admin, register a hospital or clinic on-chain, add verified doctor wallet addresses, and have patients grant the institution access to records.
+Institution flow: connect MetaMask, register as an institution admin, register a hospital or clinic on-chain, approve or reject doctor membership requests, manage doctors, request patient record access, view shared-record key envelopes, and monitor notifications.
 
 ## Known Limitations
 
-- Wallet loss = permanent record loss (by design)
-- Sepolia testnet only, not production-ready
-- ML output is not a medical diagnosis
-- Institution admins are self-registered (no real-world KYC)
-- No mobile support
+- Wallet loss or lost AES/key envelope material can mean permanent record loss.
+- Revocation stops future authorized access; it cannot delete files already decrypted or downloaded.
+- Sepolia testnet only, not production-ready.
+- ML output is diabetes-risk support only, not a medical diagnosis.
+- Institution admins are self-registered with no real-world KYC.
+- No mobile app or formal security audit yet.

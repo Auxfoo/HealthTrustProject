@@ -1,4 +1,4 @@
-const CONTRACT_ADDRESS = "0x4E559F1F0bc234b5B0D2C7304826a81BAB85efF8";
+const CONTRACT_ADDRESS = "0x12d9BE07520fd38748EB30Ffa5fc2EB126cC8FFd";
 const CONTRACT_ABI = [
   {
     "anonymous": false,
@@ -214,6 +214,43 @@ const CONTRACT_ABI = [
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "patient",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "createdBy",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "recordId",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "cid",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "RecordAddedForPatient",
+    "type": "event"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -240,6 +277,24 @@ const CONTRACT_ABI = [
       }
     ],
     "name": "addRecord",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "patient",
+        "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "cid",
+        "type": "string"
+      }
+    ],
+    "name": "addRecordForPatient",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

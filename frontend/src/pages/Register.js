@@ -3,6 +3,8 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useWallet } from "../context/WalletContext";
 import { parseReceiptEvent, registerInstitution } from "../utils/contractHelper";
+import { createAuthHeaders } from "../utils/auth";
+import { getEncryptionPublicKey } from "../utils/keySharing";
 
 export default function Register() {
   const { walletAddress, API_URL, fetchProfile } = useWallet();
@@ -14,6 +16,10 @@ export default function Register() {
     institutionId: "",
     institutionName: "",
     institutionType: "hospital",
+    bloodType: "",
+    allergies: "",
+    chronicConditions: "",
+    emergencyContact: "",
   });
 
   useEffect(() => {
@@ -41,6 +47,8 @@ export default function Register() {
           institutionType: form.institutionType,
           adminWallet: walletAddress,
           institutionId,
+        }, {
+          headers: await createAuthHeaders(walletAddress),
         });
 
         toast.update(toastId, { render: "Institution registered", type: "success", isLoading: false, autoClose: 3000 });
@@ -55,12 +63,28 @@ export default function Register() {
       }
     }
 
+    let encryptionPublicKey = "";
+    if (form.role !== "institution_admin") {
+      try {
+        encryptionPublicKey = await getEncryptionPublicKey(walletAddress);
+      } catch (error) {
+        toast.warn("Profile saved without encryption public key. Secure key sharing will be limited until you register it.");
+      }
+    }
+
     await axios.post(`${API_URL}/api/users/register`, {
       wallet: walletAddress,
       name: form.name,
       email: form.email,
       role: form.role,
       institutionId,
+      encryptionPublicKey,
+      bloodType: form.bloodType,
+      allergies: form.allergies,
+      chronicConditions: form.chronicConditions,
+      emergencyContact: form.emergencyContact,
+    }, {
+      headers: await createAuthHeaders(walletAddress),
     });
     await fetchProfile(walletAddress);
     toast.success("Profile saved");
@@ -99,6 +123,27 @@ export default function Register() {
               ))}
             </select>
           </label>
+        )}
+
+        {form.role === "patient" && (
+          <>
+            <label>
+              Blood type
+              <input value={form.bloodType} onChange={(event) => update("bloodType", event.target.value)} />
+            </label>
+            <label>
+              Allergies
+              <input value={form.allergies} onChange={(event) => update("allergies", event.target.value)} />
+            </label>
+            <label>
+              Chronic conditions
+              <input value={form.chronicConditions} onChange={(event) => update("chronicConditions", event.target.value)} />
+            </label>
+            <label>
+              Emergency contact
+              <input value={form.emergencyContact} onChange={(event) => update("emergencyContact", event.target.value)} />
+            </label>
+          </>
         )}
 
         {form.role === "institution_admin" && (

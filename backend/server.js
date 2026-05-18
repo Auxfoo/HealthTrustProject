@@ -8,6 +8,12 @@ const recordRoutes = require("./routes/records");
 const accessRoutes = require("./routes/access");
 const institutionRoutes = require("./routes/institutions");
 const predictRoutes = require("./routes/predict");
+const recordKeyRoutes = require("./routes/recordKeys");
+const accessRequestRoutes = require("./routes/accessRequests");
+const noteRoutes = require("./routes/notes");
+const membershipRequestRoutes = require("./routes/membershipRequests");
+const doctorDocumentRoutes = require("./routes/doctorDocuments");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,6 +31,12 @@ app.use("/api/records", recordRoutes);
 app.use("/api/access", accessRoutes);
 app.use("/api/institutions", institutionRoutes);
 app.use("/api/predict", predictRoutes);
+app.use("/api/record-keys", recordKeyRoutes);
+app.use("/api/access-requests", accessRequestRoutes);
+app.use("/api/notes", noteRoutes);
+app.use("/api/membership-requests", membershipRequestRoutes);
+app.use("/api/doctor-documents", doctorDocumentRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 async function startServer() {
   try {
