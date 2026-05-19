@@ -51,9 +51,9 @@ Excluded from this prototype:
 
 | Role | Can do |
 | --- | --- |
-| Patient | Register profile, upload encrypted PDF/image records, add metadata, archive records, mark important records, grant/revoke doctor access, grant/revoke institution access, resend shared keys, view doctor notes, view care documents, download care documents as PDFs, see notifications, and view audit history. |
-| Doctor | Register profile and MetaMask encryption public key, view only accessible records with matching key envelopes, decrypt/download records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
-| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, and see notifications. |
+| Patient | Register profile, upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, view doctor notes, view care documents, download care documents as PDFs, see notifications, view audit history, and review the security model. |
+| Doctor | Register profile and MetaMask encryption public key, view only accessible records with matching key envelopes, decrypt/download records, request emergency access to emergency-visible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
+| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared-key counts, review analytics/audit history, see notifications, and review the security model. |
 
 ## Architecture
 
@@ -124,6 +124,8 @@ Frontend `.env` needs:
 ```env
 VITE_API_URL=http://localhost:5000
 ```
+
+Use real Sepolia RPC URLs for demos. The backend can fall back to a public Sepolia provider for some read-only record lookups if `SEPOLIA_RPC_URL` is still the placeholder value, but deploys, server-side proxy writes, and reliable demos should use a real Alchemy/Infura/custom RPC URL.
 
 ## Install
 
@@ -254,13 +256,24 @@ Create a `docs/screenshots` folder and place final screenshots with these filena
 | --- | --- |
 | Login/connect wallet screen | `docs/screenshots/01-login-register.png` |
 | Patient dashboard | `docs/screenshots/02-patient-dashboard.png` |
-| Patient upload/metadata controls | `docs/screenshots/03-patient-upload.png` |
-| Record access modal | `docs/screenshots/04-access-modal.png` |
-| Doctor accessible records | `docs/screenshots/05-doctor-records.png` |
-| Diabetes prediction result | `docs/screenshots/06-prediction-result.png` |
-| Institution dashboard | `docs/screenshots/07-institution-dashboard.png` |
+| Patient registration and upload flow, including upload status and uploaded record list | `docs/screenshots/03-patient-upload.png` |
+| Access grant/revoke modal showing doctor and institution permission controls | `docs/screenshots/04-access-modal.png` |
+| Doctor dashboard with accessible records, preview/view action, prediction form, and notes/documents history | `docs/screenshots/05-doctor-records.png` |
+| Diabetes prediction result with probability bar and contributing values | `docs/screenshots/06-prediction-result.png` |
+| Institution dashboard with doctors, shared records, shared-key count, and Doctor Requests | `docs/screenshots/07-institution-dashboard.png` |
+| Optional: notifications tab with mark-read action | `docs/screenshots/08-notifications.png` |
+| Optional: security model tab | `docs/screenshots/09-security-model.png` |
 
 Use fake sample records and Sepolia test wallets only. Do not include private keys, real patient data, or real medical files in screenshots.
+
+Suggested report mapping:
+
+| Figure | What to show |
+| --- | --- |
+| Figure 4.1 | Patient wallet/registration, upload details, upload status indicator, and record list after upload. |
+| Figure 4.2 | Doctor dashboard with accessible records, record view/decrypt action, prediction form, and notes/documents history. |
+| Figure 4.3 | Institution admin dashboard with doctors, Doctor Requests, and Shared records. |
+| Figure 4.4 | Permission lifecycle from upload to Manage Access, grant access, key envelope visibility, revoke access, and removed access state. |
 
 ## Run Tests
 
@@ -326,6 +339,33 @@ test\system\system-test-cases.md
 
 For final submission, each manual test case should be updated from `Manual` to `PASS` or `FAIL`, with date and short notes.
 
+## Local Demo Reset
+
+To let the same MetaMask wallets register again, clear local PostgreSQL workflow data. This does not delete MetaMask accounts and does not remove Sepolia/on-chain events.
+
+```powershell
+cd backend
+@"
+DELETE FROM notifications;
+DELETE FROM institution_join_requests;
+DELETE FROM access_requests;
+DELETE FROM record_keys;
+DELETE FROM doctor_notes;
+DELETE FROM doctor_documents;
+DELETE FROM prediction_history;
+DELETE FROM record_metadata;
+DELETE FROM institutions;
+DELETE FROM users;
+"@ | npx prisma db execute --schema .\prisma\schema.prisma --stdin
+```
+
+If only the local registered profiles should be cleared:
+
+```powershell
+cd backend
+"DELETE FROM users;" | npx prisma db execute --schema .\prisma\schema.prisma --stdin
+```
+
 ## Final Submission TODO
 
 Use `TODO_GRADUATION.md` as the final checklist for screenshots, manual browser testing, evidence updates, demo preparation, and defense talking points.
@@ -371,6 +411,7 @@ test/
 - Institution admins are self-registered; there is no real-world KYC.
 - The ML result is not a clinical diagnosis.
 - No formal security audit has been performed.
+- Local database resets do not reset smart-contract state on Sepolia; redeploy the contract for a completely clean on-chain demo.
 
 ## References
 

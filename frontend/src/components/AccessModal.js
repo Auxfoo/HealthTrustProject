@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Building2, Clipboard, KeyRound, RotateCw, Stethoscope, X } from "lucide-react";
+import { Building2, Check, Clipboard, KeyRound, LoaderCircle, RotateCw, Stethoscope, X } from "lucide-react";
 import { ethers } from "ethers";
 import { useWallet } from "../context/WalletContext";
 import {
@@ -18,6 +18,7 @@ import {
   storeKeyEnvelope,
   storeKeyEnvelopes,
 } from "../utils/recordSharing";
+import { createAuthHeaders } from "../utils/auth";
 
 export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, onClose }) {
   const { API_URL, walletAddress } = useWallet();
@@ -25,6 +26,9 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
   const [doctorAddress, setDoctorAddress] = useState("");
   const [institutionId, setInstitutionId] = useState("");
   const [institutions, setInstitutions] = useState([]);
+  const [visibleKeyRows, setVisibleKeyRows] = useState(keyRows);
+  const [accessStatus, setAccessStatus] = useState(null);
+  const busy = accessStatus?.state === "working";
 
   useEffect(() => {
     axios.get(`${API_URL}/api/institutions`).then((response) => {
@@ -33,25 +37,73 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
     });
   }, [API_URL]);
 
-  const directKeys = keyRows.filter((key) => key.recordId === record.id && key.accessType === "doctor");
-  const institutionKeys = keyRows.filter((key) => key.recordId === record.id && key.accessType === "institution");
+  useEffect(() => {
+    setVisibleKeyRows(keyRows);
+  }, [keyRows]);
+
+  const directKeys = visibleKeyRows.filter((key) => key.recordId === record.id && key.accessType === "doctor");
+  const institutionKeys = visibleKeyRows.filter((key) => key.recordId === record.id && key.accessType === "institution");
 
   async function copyWallet(address) {
     await navigator.clipboard.writeText(address);
     toast.success("Wallet copied");
   }
 
+  async function refreshKeyRows() {
+    const response = await axios.get(`${API_URL}/api/record-keys/owned`, {
+      headers: await createAuthHeaders(walletAddress),
+    });
+    setVisibleKeyRows(response.data);
+    return response.data;
+  }
+
+  async function refreshEverywhere() {
+    await refreshKeyRows();
+    if (onRefresh) {
+      try {
+        await onRefresh();
+      } catch (error) {
+        toast.warn(error.response?.data?.message || error.message || "Dashboard refresh failed. Modal data was refreshed.");
+      }
+    }
+  }
+
   async function runTransaction(action, pendingMessage, successMessage, after) {
     const toastId = toast.info(pendingMessage, { autoClose: 3000 });
+    setAccessStatus({ state: "working", title: pendingMessage, detail: "Confirm the transaction in MetaMask." });
     try {
       const tx = await action();
+      setAccessStatus({
+        state: "working",
+        title: "Transaction submitted",
+        detail: "Waiting for Sepolia confirmation.",
+        txHash: tx.hash,
+      });
       await tx.wait();
+      setAccessStatus({
+        state: "working",
+        title: "Updating access list",
+        detail: "Saving key envelope changes and refreshing this modal.",
+        txHash: tx.hash,
+      });
       if (after) await after();
       toast.update(toastId, { render: successMessage, type: "success", isLoading: false, autoClose: 3000 });
-      if (onRefresh) await onRefresh();
+      await refreshEverywhere();
+      setAccessStatus({
+        state: "success",
+        title: successMessage,
+        detail: "The access list below is up to date.",
+        txHash: tx.hash,
+      });
     } catch (error) {
+      const message = error.response?.data?.message || error.response?.data?.error || error.reason || error.message || "Access update failed";
+      setAccessStatus({
+        state: "error",
+        title: "Access update failed",
+        detail: typeof message === "string" ? message : JSON.stringify(message),
+      });
       toast.update(toastId, {
-        render: error.reason || error.message,
+        render: typeof message === "string" ? message : "Access update failed",
         type: "error",
         isLoading: false,
         autoClose: 5000,
@@ -67,13 +119,17 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
 
   async function resendDoctorKey(target) {
     const toastId = toast.info("Resending key...", { autoClose: 3000 });
+    setAccessStatus({ state: "working", title: "Resending key", detail: "Saving a fresh encrypted key envelope." });
     try {
       await shareDoctorKey(target);
       toast.update(toastId, { render: "Key resent", type: "success", isLoading: false, autoClose: 3000 });
-      if (onRefresh) await onRefresh();
+      await refreshEverywhere();
+      setAccessStatus({ state: "success", title: "Key resent", detail: "The key envelope list is up to date." });
     } catch (error) {
+      const message = error.response?.data?.message || error.message || "Unable to resend key";
+      setAccessStatus({ state: "error", title: "Unable to resend key", detail: message });
       toast.update(toastId, {
-        render: error.response?.data?.message || error.message,
+        render: message,
         type: "error",
         isLoading: false,
         autoClose: 5000,
@@ -148,16 +204,20 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
     if (!aesKey) return toast.error("AES key is not available in this browser. Re-upload or paste the key first.");
 
     const toastId = toast.info("Sharing institution keys...", { autoClose: 3000 });
+    setAccessStatus({ state: "working", title: "Sharing institution keys", detail: "Creating key envelopes for institution doctors." });
     try {
       const doctors = await getInstitutionDoctors(institution.institutionId);
       if (doctors.length === 0) throw new Error("This institution has no doctors to receive the encrypted key.");
       const envelopes = await buildInstitutionKeyEnvelopes(API_URL, institution, doctors, record, aesKey);
       await storeKeyEnvelopes(API_URL, walletAddress, envelopes);
       toast.update(toastId, { render: "Institution keys shared", type: "success", isLoading: false, autoClose: 3000 });
-      if (onRefresh) await onRefresh();
+      await refreshEverywhere();
+      setAccessStatus({ state: "success", title: "Institution keys shared", detail: "The institution key envelope list is up to date." });
     } catch (error) {
+      const message = error.response?.data?.message || error.message || "Unable to share institution keys";
+      setAccessStatus({ state: "error", title: "Unable to share institution keys", detail: message });
       toast.update(toastId, {
-        render: error.response?.data?.message || error.message,
+        render: message,
         type: "error",
         isLoading: false,
         autoClose: 5000,
@@ -207,6 +267,25 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
           already decrypted or downloaded.
         </p>
 
+        {accessStatus && (
+          <div className={`access-status ${accessStatus.state}`}>
+            <div className="access-status-main">
+              {accessStatus.state === "working" && <LoaderCircle className="spin-icon" size={18} />}
+              {accessStatus.state === "success" && <Check size={18} />}
+              {accessStatus.state === "error" && <X size={18} />}
+              <div>
+                <strong>{accessStatus.title}</strong>
+                <span>{accessStatus.detail}</span>
+              </div>
+            </div>
+            {accessStatus.txHash && (
+              <a className="icon-link compact" href={`https://sepolia.etherscan.io/tx/${accessStatus.txHash}`} target="_blank" rel="noreferrer">
+                View tx
+              </a>
+            )}
+          </div>
+        )}
+
         {activeTab === "doctor" ? (
           <div className="form-grid">
             <label>
@@ -214,12 +293,15 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
               <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} />
             </label>
             <div className="button-row">
-              <button onClick={grantDoctor}>Grant</button>
-              <button className="secondary" onClick={() => revokeDoctor()}>
+              <button onClick={grantDoctor} disabled={busy}>
+                <KeyRound size={16} />
+                Grant
+              </button>
+              <button className="secondary" onClick={() => revokeDoctor()} disabled={busy}>
                 Revoke
               </button>
             </div>
-            <h3>Doctors with key envelopes</h3>
+            <h3>Doctors With Key Envelopes</h3>
             <div className="request-list">
               {directKeys.map((key) => (
                 <div className="request-row" key={key.id}>
@@ -228,10 +310,10 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
                     <button className="icon-button ghost" onClick={() => copyWallet(key.recipientWallet)} aria-label="Copy wallet">
                       <Clipboard size={16} />
                     </button>
-                    <button className="icon-button ghost" onClick={() => resendDoctorKey(key.recipientWallet)} aria-label="Resend key">
+                    <button className="icon-button ghost" onClick={() => resendDoctorKey(key.recipientWallet)} aria-label="Resend key" disabled={busy}>
                       <RotateCw size={16} />
                     </button>
-                    <button className="secondary" onClick={() => revokeDoctor(key.recipientWallet)}>
+                    <button className="secondary" onClick={() => revokeDoctor(key.recipientWallet)} disabled={busy}>
                       Revoke
                     </button>
                   </div>
@@ -260,18 +342,18 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
               </select>
             </label>
             <div className="button-row">
-              <button onClick={grantInstitution} disabled={institutions.length === 0}>
+              <button onClick={grantInstitution} disabled={institutions.length === 0 || busy}>
                 <KeyRound size={16} />
                 Grant
               </button>
-              <button className="secondary" onClick={reshareInstitutionKeys} disabled={institutions.length === 0}>
+              <button className="secondary" onClick={reshareInstitutionKeys} disabled={institutions.length === 0 || busy}>
                 Share keys
               </button>
-              <button className="secondary" onClick={() => revokeInstitution()} disabled={institutions.length === 0}>
+              <button className="secondary" onClick={() => revokeInstitution()} disabled={institutions.length === 0 || busy}>
                 Revoke
               </button>
             </div>
-            <h3>Institution key envelopes</h3>
+            <h3>Institution Key Envelopes</h3>
             <div className="request-list">
               {institutionKeys.map((key) => (
                 <div className="request-row" key={key.id}>
@@ -283,7 +365,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
               {institutionKeys.length === 0 && (
                 <div className="empty-state">
                   <Building2 size={24} />
-                  <strong>No institution sharing yet</strong>
+                  <strong>No Institution Sharing Yet</strong>
                   <span>Institution doctor key envelopes will appear here after access is granted.</span>
                 </div>
               )}

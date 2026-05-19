@@ -8,7 +8,10 @@ const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || contractConfig.CONTRACT
 const CONTRACT_ABI = contractConfig.CONTRACT_ABI || [];
 
 function getReadContract() {
-  const provider = new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL);
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || "";
+  const provider = !rpcUrl || rpcUrl.includes("your_api_key")
+    ? ethers.getDefaultProvider("sepolia")
+    : new ethers.JsonRpcProvider(rpcUrl);
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 

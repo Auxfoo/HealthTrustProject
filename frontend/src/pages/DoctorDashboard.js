@@ -102,6 +102,12 @@ function extractPredictionValues(bytes) {
   return predictionFields.every(({ key }) => extracted[key]) ? extracted : null;
 }
 
+function formatLabel(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 export default function DoctorDashboard() {
   const { walletAddress, API_URL, userProfile } = useWallet();
   const [activeTab, setActiveTab] = useState("records");
@@ -316,17 +322,23 @@ export default function DoctorDashboard() {
     if (userProfile?.institutionId) ids.add(String(userProfile.institutionId));
     return ids;
   }, [membershipRequests, userProfile]);
-  const availableInstitutions = useMemo(
-    () => institutions.filter((institution) => !unavailableInstitutionIds.has(String(institution.institutionId))),
-    [institutions, unavailableInstitutionIds]
-  );
+  const availableInstitutions = useMemo(() => {
+    const seen = new Set();
+    return institutions.filter((institution) => {
+      if (unavailableInstitutionIds.has(String(institution.institutionId))) return false;
+      const key = `${institution.name.trim().toLowerCase()}|${institution.institutionType}|${institution.adminWallet?.toLowerCase() || ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [institutions, unavailableInstitutionIds]);
 
   useEffect(() => {
-    if (!availableInstitutions.some((institution) => String(institution.institutionId) === String(joinForm.institutionId))) {
-      const nextInstitutionId = availableInstitutions[0] ? String(availableInstitutions[0].institutionId) : "";
-      if (String(joinForm.institutionId) !== nextInstitutionId) {
-        setJoinForm((current) => ({ ...current, institutionId: nextInstitutionId }));
-      }
+    if (
+      joinForm.institutionId &&
+      !availableInstitutions.some((institution) => String(institution.institutionId) === String(joinForm.institutionId))
+    ) {
+      setJoinForm((current) => ({ ...current, institutionId: "" }));
     }
   }, [availableInstitutions, joinForm.institutionId]);
 
@@ -474,8 +486,8 @@ export default function DoctorDashboard() {
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Doctor workspace</p>
-          <h1>Care review</h1>
+          <p className="eyebrow">Doctor Workspace</p>
+          <h1>Care Review</h1>
         </div>
         <button className="icon-button secondary" onClick={loadAccessibleRecords} aria-label="Refresh accessible records">
           <RefreshCw size={16} />
@@ -483,10 +495,10 @@ export default function DoctorDashboard() {
       </div>
 
       <section className="stat-grid">
-        <StatCard icon={FileSearch} label="Accessible records" value={records.length} />
+        <StatCard icon={FileSearch} label="Accessible Records" value={records.length} />
         <StatCard icon={UsersRound} label="Patients" value={patientCount} accent="green" />
         <StatCard icon={Stethoscope} label="Latest risk" value={riskLabel} accent="amber" />
-        <StatCard icon={FilePlus2} label="Care docs" value={documents.length} />
+        <StatCard icon={FilePlus2} label="Care Docs" value={documents.length} />
       </section>
 
       <div className="tabs">
@@ -533,7 +545,7 @@ export default function DoctorDashboard() {
             {filteredRecords.length === 0 && (
               <div className="empty-state">
                 <FileSearch size={28} />
-                <strong>No accessible records</strong>
+                <strong>No Accessible Records</strong>
               </div>
             )}
           </section>
@@ -542,7 +554,7 @@ export default function DoctorDashboard() {
 
       {activeTab === "patients" && (
         <section className="panel request-list">
-          <h3>Patient workspace</h3>
+          <h3>Patient Workspace</h3>
           {Object.entries(patientGroups).map(([wallet, patientRecords]) => {
             const profile = patientProfiles[wallet];
             const patientNotes = notes.filter((note) => note.patientWallet?.toLowerCase() === wallet);
@@ -572,7 +584,7 @@ export default function DoctorDashboard() {
           {Object.keys(patientGroups).length === 0 && (
             <div className="empty-state">
               <UserRound size={28} />
-              <strong>No patient workspace yet</strong>
+              <strong>No Patient Workspace Yet</strong>
               <span>Patients appear here after they grant you decryptable record access.</span>
             </div>
           )}
@@ -642,7 +654,7 @@ export default function DoctorDashboard() {
             {emergencyRecords.length === 0 && (
               <div className="empty-state">
                 <AlertTriangle size={28} />
-                <strong>No emergency-visible records</strong>
+                <strong>No Emergency-Visible Records</strong>
                 <span>Records patients mark as emergency will appear here.</span>
               </div>
             )}
@@ -694,18 +706,27 @@ export default function DoctorDashboard() {
             </label>
             <button disabled={!hasAccessibleRecords}>Save note</button>
           </form>
-          <div className="request-list">
+          <div className="history-list">
+            <div className="history-list-header">
+              <h3>Notes History</h3>
+              <span>{notes.length} Total</span>
+            </div>
             {notes.map((note) => (
-              <article className="request-row" key={note.id}>
-                <strong>Record #{note.recordId}</strong>
-                <span>{note.status}</span>
-                <p>{note.note}</p>
+              <article className="history-row" key={note.id}>
+                <div className="history-main">
+                  <strong>Record #{note.recordId}</strong>
+                  <span>{note.note || "No note text provided."}</span>
+                </div>
+                <div className="history-meta">
+                  <span className="badge status-badge">{formatLabel(note.status)}</span>
+                  <small>{new Date(note.updatedAt || note.createdAt).toLocaleString()}</small>
+                </div>
               </article>
             ))}
             {notes.length === 0 && (
               <div className="empty-state">
                 <Stethoscope size={28} />
-                <strong>No notes</strong>
+                <strong>No Notes</strong>
                 <span>Notes you add for accessible records will appear here.</span>
               </div>
             )}
@@ -763,18 +784,27 @@ export default function DoctorDashboard() {
             </label>
             <button disabled={!hasAccessibleRecords}>Send to patient</button>
           </form>
-          <div className="request-list">
+          <div className="history-list">
+            <div className="history-list-header">
+              <h3>Documents History</h3>
+              <span>{documents.length} Total</span>
+            </div>
             {documents.map((document) => (
-              <article className="request-row" key={document.id}>
-                <strong>{document.title}</strong>
-                <span>{document.patientWallet}</span>
-                <small>{document.documentType}</small>
+              <article className="history-row" key={document.id}>
+                <div className="history-main">
+                  <strong>{document.title}</strong>
+                  <span>{document.patientWallet}</span>
+                </div>
+                <div className="history-meta">
+                  <span className="badge status-badge">{formatLabel(document.documentType)}</span>
+                  <small>{new Date(document.createdAt).toLocaleString()}</small>
+                </div>
               </article>
             ))}
             {documents.length === 0 && (
               <div className="empty-state">
                 <FilePlus2 size={28} />
-                <strong>No documents</strong>
+                <strong>No Documents</strong>
                 <span>Care documents you send to patients will appear here.</span>
               </div>
             )}
@@ -792,7 +822,7 @@ export default function DoctorDashboard() {
                 onChange={(event) => setJoinForm({ ...joinForm, institutionId: event.target.value })}
                 disabled={availableInstitutions.length === 0}
               >
-                {availableInstitutions.length === 0 && <option value="">No available institutions</option>}
+                <option value="">{availableInstitutions.length === 0 ? "No available institutions" : "Choose institution"}</option>
                 {availableInstitutions.map((institution) => (
                   <option key={institution.institutionId} value={institution.institutionId}>
                     {institution.name} ({institution.institutionType})
@@ -809,18 +839,30 @@ export default function DoctorDashboard() {
               <span className="muted">Institutions with pending or approved requests are hidden from this list.</span>
             )}
           </form>
-          <div className="request-list">
-            {membershipRequests.map((request) => (
-              <article className="request-row" key={request.id}>
-                <strong>Institution #{request.institutionId}</strong>
-                <span>Status: {request.status}</span>
-                <p>{request.message}</p>
-              </article>
-            ))}
+          <div className="history-list">
+            <div className="history-list-header">
+              <h3>Membership History</h3>
+              <span>{membershipRequests.length} Total</span>
+            </div>
+            {membershipRequests.map((request) => {
+              const institution = institutions.find((item) => Number(item.institutionId) === Number(request.institutionId));
+              return (
+                <article className="history-row" key={request.id}>
+                  <div className="history-main">
+                    <strong>{institution ? institution.name : `Institution #${request.institutionId}`}</strong>
+                    <span>{request.message || "No message provided."}</span>
+                  </div>
+                  <div className="history-meta">
+                    <span className={`badge status-badge ${request.status}`}>{formatLabel(request.status)}</span>
+                    <small>{new Date(request.updatedAt || request.createdAt).toLocaleString()}</small>
+                  </div>
+                </article>
+              );
+            })}
             {membershipRequests.length === 0 && (
               <div className="empty-state">
                 <UsersRound size={28} />
-                <strong>No membership history</strong>
+                <strong>No Membership History</strong>
                 <span>Your institution join requests will appear here.</span>
               </div>
             )}
@@ -839,7 +881,7 @@ export default function DoctorDashboard() {
           />
           {result && (
             <div className="result-card">
-              <h2>{result.prediction === 1 ? "Diabetic risk indicated" : "No diabetic risk indicated"}</h2>
+              <h2>{result.prediction === 1 ? "Diabetic Risk Indicated" : "No Diabetic Risk Indicated"}</h2>
               <RiskMeter probability={result.probability} />
               <div className="request-list">
                 <article className="request-row">
@@ -869,7 +911,7 @@ export default function DoctorDashboard() {
           {predictionHistory.length === 0 && (
             <div className="empty-state">
               <Stethoscope size={28} />
-              <strong>No history</strong>
+              <strong>No History</strong>
               <span>Diabetes prediction results will appear here after you submit the form.</span>
             </div>
           )}
@@ -879,7 +921,7 @@ export default function DoctorDashboard() {
       {activeTab === "audit" && (
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Doctor audit timeline</h2>
+            <h2>Doctor Audit Timeline</h2>
           </div>
           {auditRows.length > 0 ? (
             <div className="timeline">

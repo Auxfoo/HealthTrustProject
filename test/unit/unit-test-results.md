@@ -120,3 +120,5 @@ Prediction output:
 ## Notes
 
 The frontend build passed. Vite reported a chunk-size warning because the generated JavaScript bundle is larger than 500 kB. This is a performance warning, not a functional failure.
+
+The current frontend build covers patient upload status, Important/Emergency flags, notifications, doctor history rows, the access modal key icon, and institution shared-key counts. These are validated by build/import success only; visual confirmation still belongs in system/usability testing.

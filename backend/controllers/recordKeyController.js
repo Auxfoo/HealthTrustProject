@@ -7,7 +7,11 @@ const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || contractConfig.CONTRACT
 const CONTRACT_ABI = contractConfig.CONTRACT_ABI || [];
 
 function getReadContract() {
-  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, new ethers.JsonRpcProvider(process.env.SEPOLIA_RPC_URL));
+  const rpcUrl = process.env.SEPOLIA_RPC_URL || "";
+  const provider = !rpcUrl || rpcUrl.includes("your_api_key")
+    ? ethers.getDefaultProvider("sepolia")
+    : new ethers.JsonRpcProvider(rpcUrl);
+  return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 }
 
 function serializeRecord(record) {
@@ -153,7 +157,18 @@ exports.deleteRecordKey = async (req, res) => {
       ? { recordId: Number(recordId), ownerWallet, recipientWallet: recipientWallet.toLowerCase() }
       : { recordId: Number(recordId), ownerWallet, accessType, accessTarget: String(accessTarget).toLowerCase() };
 
+    const deletedRows = await prisma.recordKey.findMany({ where });
     const result = await prisma.recordKey.deleteMany({ where });
+    await Promise.all(
+      deletedRows.map((row) =>
+        createNotification(
+          row.recipientWallet,
+          "record_key_revoked",
+          "Encrypted record key removed",
+          `Your key envelope for record #${recordId} was removed.`
+        )
+      )
+    );
     res.json({ deleted: result.count });
   } catch (error) {
     res.status(500).json({ message: "Unable to delete encrypted key", error: error.message });

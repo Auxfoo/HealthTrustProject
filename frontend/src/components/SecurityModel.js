@@ -32,7 +32,7 @@ const rows = [
 export default function SecurityModel() {
   return (
     <section className="panel request-list">
-      <h3>Security model</h3>
+      <h3>Security Model</h3>
       {rows.map(({ icon: Icon, title, text }) => (
         <article className="request-row" key={title}>
           <div>

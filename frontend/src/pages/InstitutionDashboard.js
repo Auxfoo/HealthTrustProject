@@ -312,8 +312,8 @@ export default function InstitutionDashboard() {
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Institution workspace</p>
-          <h1>Organization access</h1>
+          <p className="eyebrow">Institution Workspace</p>
+          <h1>Organization Access</h1>
         </div>
         <button className="icon-button secondary" onClick={loadInstitution} aria-label="Refresh institution">
           <RefreshCw size={16} />
@@ -379,10 +379,10 @@ export default function InstitutionDashboard() {
 
       {activeTab === "analytics" && (
         <section className="panel request-list">
-          <h3>Institution analytics</h3>
+          <h3>Institution Analytics</h3>
           <article className="request-row">
             <div>
-              <strong>Operational summary</strong>
+              <strong>Operational Summary</strong>
               <span>{doctors.length} registered doctor(s)</span>
               <span>{activeSharedRecords} active shared record(s)</span>
               <span>{pendingMembership.length} pending membership request(s)</span>
@@ -442,7 +442,7 @@ export default function InstitutionDashboard() {
 
       {activeTab === "doctor_requests" && (
         <section className="panel request-list">
-          <h3>Doctor membership requests</h3>
+          <h3>Doctor Membership Requests</h3>
           {pendingMembership.map((request) => (
             <article className="request-row" key={request.id}>
               <div>
@@ -464,7 +464,7 @@ export default function InstitutionDashboard() {
           {pendingMembership.length === 0 && (
             <div className="empty-state">
               <Stethoscope size={28} />
-              <strong>No doctor requests</strong>
+              <strong>No Doctor Requests</strong>
               <span>New doctor membership requests will appear here.</span>
             </div>
           )}
@@ -474,7 +474,7 @@ export default function InstitutionDashboard() {
       {activeTab === "shared" && (
         <section className="panel record-list">
           <div className="panel-title-row">
-            <h3>Records shared with this institution</h3>
+            <h3>Records Shared With This Institution</h3>
             <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter category">
               <option value="all">All categories</option>
               <option value="lab">Lab</option>
@@ -490,8 +490,8 @@ export default function InstitutionDashboard() {
               record={record}
               filename={metadata[record.id]?.title || metadata[record.id]?.filename}
               actions={
-                <span className="badge">
-                  {sharedKeys.filter((key) => key.recordId === record.id).length} doctor key(s)
+                <span className="badge shared-key-badge">
+                  {sharedKeys.filter((key) => key.recordId === record.id).length} Doctor Key(s)
                 </span>
               }
             />
@@ -499,7 +499,7 @@ export default function InstitutionDashboard() {
           {filteredSharedRecords.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No shared records yet</strong>
+              <strong>No Shared Records Yet</strong>
               <span>Records granted to this institution will appear here.</span>
             </div>
           )}
@@ -509,7 +509,7 @@ export default function InstitutionDashboard() {
       {activeTab === "audit" && (
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Institution audit timeline</h2>
+            <h2>Institution Audit Timeline</h2>
             <button className="icon-button with-label secondary" onClick={exportInstitutionAuditPdf} disabled={institutionAuditRows.length === 0}>
               <Download size={16} />
               Export PDF
@@ -529,7 +529,7 @@ export default function InstitutionDashboard() {
           ) : (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No audit events yet</strong>
+              <strong>No Audit Events Yet</strong>
               <span>Membership, shared record, and encrypted key events will appear here.</span>
             </div>
           )}

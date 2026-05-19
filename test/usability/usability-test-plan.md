@@ -52,12 +52,16 @@ Each participant needs access to a MetaMask wallet on Sepolia. Use fake sample r
 | --- | --- | --- | --- |
 | Register and connect wallet | Less than 3 minutes | User reaches correct dashboard | Pending |
 | Patient uploads a medical record | Less than 4 minutes | Record appears with metadata | Pending |
+| Patient reads upload progress | Less than 1 minute | User understands whether upload is encrypting, waiting for MetaMask, saving metadata, or complete | Pending |
 | Patient grants doctor access | Less than 3 minutes | Doctor can view/decrypt record | Pending |
+| Patient toggles Important/Emergency flags | Less than 1 minute | User understands the selected flag state | Pending |
 | Patient grants institution access | Less than 3 minutes | Institution admin sees shared record | Pending |
 | Doctor views record and adds note | Less than 3 minutes | Patient can see note | Pending |
 | Doctor sends care document | Less than 3 minutes | Patient sees document and can download PDF | Pending |
+| Doctor reviews Notes/Documents/Membership history | Less than 2 minutes | User can identify record, status/type, date, and message without confusion | Pending |
 | Doctor runs diabetes prediction | Less than 2 minutes | Prediction result appears and history updates | Pending |
 | Institution admin approves doctor request | Less than 2 minutes | Doctor becomes institution member | Pending |
+| Institution admin reviews Shared records | Less than 2 minutes | User understands the doctor key count | Pending |
 | Institution admin removes doctor | Less than 2 minutes | Doctor is removed and notified | Pending |
 
 ## What To Observe
@@ -65,9 +69,13 @@ Each participant needs access to a MetaMask wallet on Sepolia. Use fake sample r
 - Did the user understand which role they were in?
 - Did MetaMask prompts make sense?
 - Did the user understand that the patient grants access from the patient record list?
+- Did the upload status indicator explain what was happening after MetaMask confirmation?
+- Did Important/Emergency flag states make sense?
 - Did empty-state messages help when no notes, documents, history, or shared records existed?
 - Did the doctor understand that records require both access and key envelopes?
+- Did the doctor histories for notes, documents, and membership make sense?
 - Did the admin understand Doctor Requests and doctor removal?
+- Did the admin understand the shared-record doctor key count?
 - Were success/error notifications visible without blocking important controls?
 
 ## SUS Questionnaire

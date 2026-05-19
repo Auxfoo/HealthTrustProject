@@ -12,9 +12,9 @@ The current role workflows are:
 
 | Role | Main workflows |
 | --- | --- |
-| Patient | Upload encrypted records, edit metadata, archive records, mark important records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, view doctor notes, view care documents, download care-document PDFs, view notifications, and view audit history. |
-| Doctor | Register encryption public key, view accessible records, decrypt records through MetaMask key envelopes, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
-| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, and inspect shared key counts. |
+| Patient | Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes, view care documents, download care-document PDFs, view notifications, view audit history, and review the security model. |
+| Doctor | Register encryption public key, view accessible records, decrypt records through MetaMask key envelopes, request emergency access to emergency-visible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
+| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, review analytics/audit history, view notifications, and review the security model. |
 
 The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
 
@@ -59,6 +59,7 @@ Included in the current prototype:
 - Doctor notes, care documents, notifications, metadata, access requests, and membership requests.
 - FastAPI diabetes risk prediction using `diabetes_prediction_dataset.csv`.
 - Automated backend, blockchain, frontend build, and ML training checks.
+- UI evidence screens for patient upload status, access grant/revoke flow, doctor histories, notifications, and institution shared-key counts.
 
 Excluded from the current prototype:
 
@@ -119,7 +120,7 @@ Diabetes prediction and probability
 
 ## 3. Main Data Flows
 
-Patient upload flow: the patient connects MetaMask, chooses a PDF or image, and the browser generates a random AES key. The file is encrypted before upload. The encrypted blob is sent to the backend, pinned to IPFS through Pinata, and returned as a CID. The frontend then calls `addRecord(cid)` on the smart contract.
+Patient upload flow: the patient connects MetaMask, chooses a PDF or image, and the browser generates a random AES key. The file is encrypted before upload. The encrypted blob is sent to the backend, pinned to IPFS through Pinata, and returned as a CID. The frontend then calls `addRecord(cid)` on the smart contract. The patient upload panel shows each stage: encrypting, uploading to IPFS, waiting for MetaMask, transaction submitted, saving metadata, and success/error. The transaction status includes an Etherscan link when available.
 
 Patient grants doctor access: the patient opens a record's access modal, enters a doctor wallet, and confirms the smart contract transaction in MetaMask. The frontend also encrypts the record AES key for that doctor using the doctor's registered MetaMask encryption public key. The doctor can view the record only when on-chain access and the key envelope both exist.
 
@@ -130,6 +131,8 @@ Doctor views and decrypts a record: the doctor opens Records, clicks View, and M
 Doctor notes and care documents: the doctor chooses an accessible record from a dropdown, adds a note, or sends a care document. Patients can see notes and care documents in their dashboard. Care documents are linked to existing records and stored in PostgreSQL; they do not create a new blockchain record.
 
 Doctor prediction flow: the doctor enters diabetes inputs manually or auto-fills them from a readable diabetes vitals PDF. The frontend posts to the backend, the backend forwards to FastAPI, and FastAPI returns prediction and probability.
+
+Emergency access flow: a patient can mark a record as emergency-visible. A doctor can request emergency access for that record. The patient still controls final approval, on-chain access, and encrypted key sharing.
 
 ## 4. Blockchain and Smart Contract
 
@@ -211,6 +214,7 @@ This result is not a diagnosis and should not replace medical judgment.
 
 | Method | Route | Purpose |
 | --- | --- | --- |
+| `GET` | `/api/health` | Backend health check. |
 | `POST` | `/api/users/register` | Save or update user profile and encryption public key. |
 | `GET` | `/api/users/:wallet` | Fetch profile by wallet. |
 | `POST` | `/api/records/upload` | Upload encrypted file blob to Pinata/IPFS. |
@@ -231,13 +235,22 @@ This result is not a diagnosis and should not replace medical judgment.
 | `PATCH` | `/api/membership-requests/:id` | Approve or reject doctor membership. |
 | `GET` | `/api/institutions` | Return registered institutions. |
 | `POST` | `/api/institutions/register` | Save institution metadata. |
+| `POST` | `/api/institutions/addDoctor` | Optional backend-proxy route for adding a doctor on-chain. MetaMask UI writes are preferred. |
+| `POST` | `/api/institutions/removeDoctor` | Optional backend-proxy route for removing a doctor on-chain. MetaMask UI writes are preferred. |
 | `GET` | `/api/institutions/:id/doctors` | Return doctors in institution. |
+| `POST` | `/api/institutions/:id/doctors/:doctorWallet/link` | Link approved doctor profile to an institution in PostgreSQL. |
+| `DELETE` | `/api/institutions/:id/doctors/:doctorWallet/link` | Unlink removed doctor profile from an institution in PostgreSQL. |
 | `POST` | `/api/predict` | Forward diabetes prediction to FastAPI and save history. |
 | `GET` | `/api/predict/history` | Fetch signed doctor's prediction history. |
 | `GET` | `/api/notifications` | Fetch signed wallet notifications. |
 | `POST` | `/api/notifications` | Create a notification, such as doctor removal. |
 | `PATCH` | `/api/notifications/:id/read` | Mark notification as read. |
-| `GET/POST/PATCH` | `/api/access-requests` | Legacy access-request API. Current doctor UI uses patient-granted access from records instead. |
+| `POST` | `/api/access/grant/doctor` | Optional backend-proxy grant doctor route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/revoke/doctor` | Optional backend-proxy revoke doctor route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/grant/institution` | Optional backend-proxy grant institution route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/revoke/institution` | Optional backend-proxy revoke institution route. MetaMask UI writes are preferred. |
+| `GET` | `/api/access/check` | Check whether a doctor has access to a record. |
+| `GET/POST/PATCH` | `/api/access-requests` | Access request workflow, including emergency access requests. Normal patient-initiated grants still happen from the Manage Access modal. |
 
 Most protected routes require signed wallet authentication headers.
 
@@ -249,14 +262,14 @@ Main frontend files:
 | --- | --- |
 | `Register.js` | Role registration and encryption public key registration. |
 | `PatientDashboard.js` | Patient records, upload, metadata, access modal, notes, documents, profile, notifications, and audit trail. |
-| `DoctorDashboard.js` | Accessible records, decrypt/download, notes, care documents, membership requests, prediction, history, notifications. |
-| `InstitutionDashboard.js` | Institution registration, doctors, doctor requests, shared records, notifications. |
+| `DoctorDashboard.js` | Accessible records, decrypt/download, emergency requests, notes, care documents, histories, membership requests, prediction, history, notifications. |
+| `InstitutionDashboard.js` | Institution registration, doctors, doctor requests, shared records with key counts, analytics, audit, notifications. |
 | `AccessModal.js` | Patient grant/revoke doctor/institution access, resend/share keys. |
 | `PredictionForm.js` | Diabetes prediction form. |
 | `NotificationsPanel.js` | Notification list and mark-read action. |
 | `RecordCard.js` | Shared record display component. |
 
-The UI includes empty states for tabs/lists with no records, notes, documents, requests, notifications, history, or shared records.
+The UI includes empty states for tabs/lists with no records, notes, documents, requests, notifications, history, or shared records. It also includes Important/Emergency flags, upload status, doctor note/document/membership histories, and shared-key counts for institution records.
 
 ## 10. Institution Model
 
@@ -466,13 +479,24 @@ Recommended screenshot list:
 | --- | --- | --- |
 | Login/register or wallet connection | `docs/screenshots/01-login-register.png` | To capture |
 | Patient dashboard | `docs/screenshots/02-patient-dashboard.png` | To capture |
-| Patient upload/metadata controls | `docs/screenshots/03-patient-upload.png` | To capture |
-| Record access modal | `docs/screenshots/04-access-modal.png` | To capture |
-| Doctor accessible records | `docs/screenshots/05-doctor-records.png` | To capture |
+| Patient upload/metadata controls with upload status and uploaded record list | `docs/screenshots/03-patient-upload.png` | To capture |
+| Access grant/revoke modal showing doctor and institution controls | `docs/screenshots/04-access-modal.png` | To capture |
+| Doctor accessible records with View action, prediction form, and notes/documents history | `docs/screenshots/05-doctor-records.png` | To capture |
 | Diabetes prediction result | `docs/screenshots/06-prediction-result.png` | To capture |
-| Institution dashboard | `docs/screenshots/07-institution-dashboard.png` | To capture |
+| Institution dashboard with Doctor Requests and Shared records | `docs/screenshots/07-institution-dashboard.png` | To capture |
+| Notifications tab | `docs/screenshots/08-notifications.png` | Optional |
+| Security model tab | `docs/screenshots/09-security-model.png` | Optional |
 
 These screenshots can be inserted into the final written report after the implementation chapter or in a results/demo chapter.
+
+Suggested report figure mapping:
+
+| Figure | Evidence |
+| --- | --- |
+| Figure 4.1: Patient Registration and Record Upload Screen | Wallet connection/register area, patient form, upload details, upload status indicator, and record list after upload. |
+| Figure 4.2: Doctor Dashboard and Authorized Records Screen | Accessible records, View/decrypt action, prediction form/result, and notes/documents history. |
+| Figure 4.3: Institution Dashboard and Membership Management | Institution overview, Doctor Requests, doctors list, Shared records, and shared-key count. |
+| Figure 4.4: Access Grant and Revoke Flow | Patient upload, Manage Access modal, grant doctor/institution access, key envelope visibility, revoke action, and removed/empty access state. |
 
 ## 16. References
 
@@ -558,6 +582,7 @@ Known limitations:
 - Institution admins are self-registered with no real-world KYC.
 - The ML result is not a medical diagnosis.
 - No formal security audit has been performed.
+- Clearing local PostgreSQL data does not clear Sepolia smart-contract events; redeploy the contract for a clean on-chain demo.
 
 Future improvements:
 

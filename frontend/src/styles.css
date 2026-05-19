@@ -629,9 +629,102 @@ th {
   min-height: 46px;
 }
 
+.upload-button.is-disabled {
+  cursor: wait;
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.upload-status,
+.access-status {
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+}
+
+.upload-status.working,
+.access-status.working {
+  border-color: rgba(10, 132, 255, 0.3);
+}
+
+.upload-status.success,
+.access-status.success {
+  border-color: rgba(46, 196, 125, 0.34);
+}
+
+.upload-status.error,
+.access-status.error {
+  border-color: rgba(245, 91, 91, 0.34);
+}
+
+.upload-status-main,
+.access-status-main {
+  align-items: center;
+  display: flex;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.upload-status-main > svg,
+.access-status-main > svg {
+  color: var(--primary);
+  flex: 0 0 auto;
+}
+
+.upload-status.success .upload-status-main > svg,
+.access-status.success .access-status-main > svg {
+  color: var(--mint);
+}
+
+.upload-status.error .upload-status-main > svg,
+.access-status.error .access-status-main > svg {
+  color: var(--danger);
+}
+
+.upload-status-main div,
+.access-status-main div {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.upload-status-main strong,
+.access-status-main strong {
+  color: var(--text-strong);
+}
+
+.upload-status-main span,
+.access-status-main span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.spin-icon {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .panel.narrow {
   margin: 1.5rem auto;
   max-width: 660px;
+}
+
+.register-panel {
+  margin-top: 3rem;
+}
+
+.register-panel h1 {
+  margin-bottom: 1.4rem;
 }
 
 .form-grid,
@@ -799,6 +892,97 @@ th {
   gap: 0.85rem;
 }
 
+.history-list {
+  align-content: start;
+  display: grid;
+  gap: 0.85rem;
+}
+
+.history-list-header {
+  align-items: center;
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  min-height: 38px;
+}
+
+.history-list-header h3 {
+  color: var(--text-strong);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.history-list-header span {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 760;
+}
+
+.history-row {
+  align-items: start;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 0.95rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.history-row:hover {
+  border-color: rgba(10, 132, 255, 0.22);
+  box-shadow: var(--shadow-soft);
+  transform: translateY(-1px);
+}
+
+.history-main,
+.history-meta {
+  display: grid;
+  gap: 0.32rem;
+  min-width: 0;
+}
+
+.history-main strong {
+  color: var(--text-strong);
+  letter-spacing: -0.01em;
+}
+
+.history-main span,
+.history-meta small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.history-meta {
+  justify-items: end;
+  text-align: right;
+}
+
+.status-badge {
+  min-height: 30px;
+  min-width: 96px;
+}
+
+.status-badge.approved {
+  background: var(--mint-soft);
+  border-color: rgba(52, 199, 89, 0.22);
+  color: var(--mint);
+}
+
+.status-badge.rejected,
+.status-badge.urgent {
+  background: var(--danger-soft);
+  border-color: rgba(255, 59, 48, 0.22);
+  color: var(--danger);
+}
+
+.status-badge.pending {
+  background: var(--amber-soft);
+  border-color: rgba(251, 191, 36, 0.24);
+  color: var(--amber);
+}
+
 .request-row,
 .doctor-row {
   align-items: center;
@@ -811,6 +995,10 @@ th {
   padding: 0.9rem;
   position: relative;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+.notifications-panel .panel-title-row {
+  margin-bottom: 1rem;
 }
 
 .request-row:hover,
@@ -868,17 +1056,108 @@ th {
 
 .inline-check {
   align-items: center;
-  color: var(--muted);
-  display: flex;
-  font-weight: 700;
-  gap: 0.65rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  color: var(--text-strong);
+  display: inline-flex;
+  font-size: 0.94rem;
+  font-weight: 760;
+  gap: 0.58rem;
+  justify-content: center;
+  line-height: 1;
+  min-height: 44px;
+  padding: 0.76rem 1rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  user-select: none;
+}
+
+.metadata-panel .inline-check {
+  align-self: end;
+  min-height: 46px;
+}
+
+.inline-check:hover {
+  background: var(--bg-elevated);
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 .inline-check input,
 input[type="checkbox"] {
-  accent-color: var(--primary);
+  appearance: none;
+  -webkit-appearance: none;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--line-strong);
+  border-radius: 6px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.55) inset;
+  cursor: pointer;
+  display: inline-grid;
+  flex: 0 0 auto;
+  height: 1.08rem;
+  margin: 0;
   min-height: auto;
-  width: auto;
+  place-content: center;
+  transition: background 80ms ease, border-color 80ms ease, box-shadow 80ms ease;
+  width: 1.08rem;
+}
+
+.inline-check input::before,
+input[type="checkbox"]::before {
+  border-bottom: 2px solid #ffffff;
+  border-right: 2px solid #ffffff;
+  content: "";
+  height: 0.52rem;
+  opacity: 0;
+  transform: rotate(45deg) scale(1);
+  width: 0.26rem;
+}
+
+.inline-check input:checked,
+input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, var(--primary), var(--teal));
+  border-color: transparent;
+  box-shadow: 0 6px 14px rgba(10, 132, 255, 0.22);
+}
+
+.inline-check input:checked::before,
+input[type="checkbox"]:checked::before {
+  opacity: 1;
+}
+
+.inline-check input:focus-visible,
+input[type="checkbox"]:focus-visible {
+  box-shadow: var(--ring);
+  outline: 0;
+}
+
+.inline-check input:disabled,
+input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+:root[data-theme="dark"] .inline-check {
+  background: #1b2632;
+  border-color: rgba(215, 232, 255, 0.18);
+}
+
+:root[data-theme="dark"] .inline-check:hover {
+  background: #223041;
+  border-color: rgba(215, 232, 255, 0.3);
+}
+
+:root[data-theme="dark"] .inline-check input,
+:root[data-theme="dark"] input[type="checkbox"] {
+  background: #0b1117;
+  border-color: rgba(215, 232, 255, 0.38);
+}
+
+:root[data-theme="dark"] .inline-check input:checked,
+:root[data-theme="dark"] input[type="checkbox"]:checked {
+  background: linear-gradient(135deg, #64aaff, #48d6ca);
+  border-color: transparent;
+  box-shadow: 0 0 0 3px rgba(100, 170, 255, 0.18);
 }
 
 .badge {
@@ -886,8 +1165,11 @@ input[type="checkbox"] {
   border: 1px solid rgba(10, 132, 255, 0.16);
   border-radius: 999px;
   color: var(--primary-strong);
+  display: inline-flex;
+  align-items: center;
   font-size: 0.82rem;
   font-weight: 800;
+  justify-content: center;
   padding: 0.4rem 0.62rem;
   white-space: nowrap;
 }
@@ -901,6 +1183,12 @@ input[type="checkbox"] {
   margin-right: 0.38rem;
   opacity: 0.55;
   width: 0.45rem;
+}
+
+.shared-key-badge {
+  min-height: 36px;
+  min-width: 120px;
+  text-align: center;
 }
 
 .result-card {
@@ -920,6 +1208,10 @@ input[type="checkbox"] {
 .result-card p {
   color: var(--muted);
   margin-bottom: 0;
+}
+
+.result-card .request-list {
+  margin-top: 1rem;
 }
 
 .risk-meter {
@@ -1102,6 +1394,15 @@ input[type="checkbox"] {
   .split-panel,
   .panel-title-row {
     grid-template-columns: 1fr;
+  }
+
+  .history-row {
+    grid-template-columns: 1fr;
+  }
+
+  .history-meta {
+    justify-items: start;
+    text-align: left;
   }
 
   .tabs,

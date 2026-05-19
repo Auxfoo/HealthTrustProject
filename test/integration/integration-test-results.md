@@ -76,6 +76,9 @@ print(main.predict(payload))
 | Contract supports clinician-created patient-owned records | Blockchain tests passed. |
 | Frontend compiles with current patient, doctor, institution, modal, and prediction UI | Frontend build passed. |
 | ML service accepts the current diabetes prediction dataset fields | Direct prediction returned valid JSON. |
+| Patient upload UI can represent each async step without relying only on auto-dismissed toast messages | Frontend build passed; browser confirmation required. |
+| Doctor notes/documents/membership histories use the current structured row components | Frontend build passed; browser confirmation required. |
+| Institution Shared tab can show doctor key counts | Frontend build passed; browser confirmation required. |
 
 ## Browser Integration Checks
 
@@ -111,6 +114,9 @@ Then test:
 | Admin removes doctor | Doctor receives notification and loses institution-based access. |
 | Doctor sends note/document | Patient sees note/document content. |
 | Doctor runs prediction | Result and history update. |
+| Doctor requests emergency access | Patient sees access request and can approve/reject access/key sharing. |
+| Patient toggles Important/Emergency flags | Flag state updates and metadata saves in the background. |
+| Notifications tab | Unread notifications can be marked read. |
 
 ## Not Fully Automated
 
@@ -120,4 +126,5 @@ These workflows require real browser/MetaMask interaction:
 - Pinata upload using real API keys
 - Multi-wallet role testing
 - Real decrypt/download using MetaMask
+- Visual checks for UI details such as checkboxes, badges, notifications, and history rows
 - Usability testing with participants

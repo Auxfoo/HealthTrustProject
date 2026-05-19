@@ -30,7 +30,7 @@ export default function NotificationsPanel() {
   }, [walletAddress]);
 
   return (
-    <section className="panel">
+    <section className="panel notifications-panel">
       <div className="panel-title-row">
         <h2>Notifications</h2>
       </div>

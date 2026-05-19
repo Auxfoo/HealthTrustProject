@@ -74,11 +74,16 @@ Date: 2026-05-19
 Some workflows cannot be completed by terminal commands because they require browser interaction and MetaMask confirmations:
 
 - Patient registration and upload
+- Patient upload status indicator and transaction link
 - Sepolia transaction confirmations
 - Doctor decrypting a real uploaded record
 - Patient sharing AES key envelopes
+- Patient Important/Emergency flags and emergency access request flow
 - Institution membership approval/removal
 - Notifications in the browser
+- Doctor notes/documents/membership history layout
+- Institution shared-key count visibility
+- Security Model tab in each role dashboard
 - Usability testing with real participants
 
 Use `system/system-test-cases.md` and `usability/usability-test-plan.md` for those.

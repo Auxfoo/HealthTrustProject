@@ -1,7 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Archive, Clock3, Download, FileText, History, RefreshCw, Search, ShieldCheck, Upload, Check, X, FileKey2 } from "lucide-react";
+import {
+  Archive,
+  Check,
+  Clock3,
+  Download,
+  ExternalLink,
+  FileKey2,
+  FileText,
+  History,
+  LoaderCircle,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Upload,
+  X,
+} from "lucide-react";
 import { useWallet } from "../context/WalletContext";
 import AccessModal from "../components/AccessModal";
 import NotificationsPanel from "../components/NotificationsPanel";
@@ -48,7 +63,9 @@ export default function PatientDashboard() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [flagFilter, setFlagFilter] = useState("all");
   const [uploadMeta, setUploadMeta] = useState({ category: "lab", provider: "", notes: "", important: false, emergency: false });
+  const [uploadStatus, setUploadStatus] = useState(null);
   const [profile, setProfile] = useState({});
+  const uploadInProgress = uploadStatus?.state === "working";
 
   async function loadRecords() {
     const response = await axios.get(`${API_URL}/api/records/${walletAddress}`);
@@ -171,28 +188,58 @@ export default function PatientDashboard() {
 
   async function uploadRecord(event) {
     const file = event.target.files?.[0];
-    if (!file) return;
+    if (!file || uploadInProgress) return;
 
     const toastId = toast.info("Encrypting record...", { autoClose: 3000 });
     try {
+      setUploadStatus({
+        state: "working",
+        title: "Encrypting record",
+        detail: `${file.name} is being encrypted in your browser.`,
+      });
       const key = generateRandomKey();
       const encryptedString = await encryptFile(await file.arrayBuffer(), key);
       const blob = new Blob([encryptedString], { type: "text/plain" });
       const formData = new FormData();
       formData.append("file", blob, `${file.name}.encrypted.txt`);
 
+      setUploadStatus({
+        state: "working",
+        title: "Uploading encrypted file",
+        detail: "Sending the encrypted file to IPFS storage.",
+      });
       toast.update(toastId, { render: "Pinning encrypted file to IPFS...", type: "info", isLoading: false, autoClose: 3000 });
       const response = await axios.post(`${API_URL}/api/records/upload`, formData, {
         headers: await createAuthHeaders(walletAddress),
       });
 
+      setUploadStatus({
+        state: "working",
+        title: "Waiting for MetaMask confirmation",
+        detail: "Confirm the blockchain transaction in MetaMask.",
+      });
       toast.update(toastId, { render: "Confirming record on-chain...", type: "info", isLoading: false, autoClose: 3000 });
       const tx = await addRecord(response.data.cid);
+      setUploadStatus({
+        state: "working",
+        title: "Transaction submitted",
+        detail: "Waiting for Sepolia to confirm the record.",
+        txHash: tx.hash,
+      });
       const receipt = await tx.wait();
       const eventLog = await parseReceiptEvent(receipt, "RecordAdded");
+      if (!eventLog) {
+        throw new Error("Transaction confirmed, but the RecordAdded event was not found. Check that the frontend ABI matches the deployed contract.");
+      }
       const recordId = Number(eventLog.args.recordId);
       const data = { filename: file.name, mimeType: file.type, aesKey: key, ...uploadMeta };
       saveLocalMetadata(walletAddress, recordId, data);
+      setUploadStatus({
+        state: "working",
+        title: "Saving record details",
+        detail: `Record #${recordId} confirmed. Saving its metadata now.`,
+        txHash: tx.hash,
+      });
       await axios.post(
         `${API_URL}/api/records/metadata`,
         { recordId, ownerWallet: walletAddress, ...data },
@@ -200,9 +247,21 @@ export default function PatientDashboard() {
       );
       toast.update(toastId, { render: "Record uploaded", type: "success", isLoading: false, autoClose: 3000 });
       await loadRecords();
+      setUploadStatus({
+        state: "success",
+        title: "Record uploaded",
+        detail: `Record #${recordId} is encrypted, confirmed, and listed below.`,
+        txHash: tx.hash,
+      });
     } catch (error) {
+      const message = error.response?.data?.message || error.response?.data?.error || error.reason || error.message || "Upload failed";
+      setUploadStatus({
+        state: "error",
+        title: "Upload stopped",
+        detail: typeof message === "string" ? message : JSON.stringify(message),
+      });
       toast.update(toastId, {
-        render: error.response?.data?.message || error.reason || error.message,
+        render: typeof message === "string" ? message : "Upload failed",
         type: "error",
         isLoading: false,
         autoClose: 5000,
@@ -213,16 +272,19 @@ export default function PatientDashboard() {
   }
 
   async function saveRecordMetadata(recordId, nextMeta) {
+    const previous = metadata[recordId] || {};
     const next = { ...(metadata[recordId] || {}), ...nextMeta };
     saveLocalMetadata(walletAddress, recordId, next);
+    setMetadata((current) => ({ ...current, [recordId]: { ...(current[recordId] || {}), ...nextMeta } }));
     try {
       await axios.post(
         `${API_URL}/api/records/metadata`,
         { recordId, ownerWallet: walletAddress, ...next },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      setMetadata((current) => ({ ...current, [recordId]: next }));
     } catch (error) {
+      saveLocalMetadata(walletAddress, recordId, previous);
+      setMetadata((current) => ({ ...current, [recordId]: previous }));
       toast.error(error.response?.data?.message || error.message || "Unable to save record details");
     }
   }
@@ -419,8 +481,8 @@ export default function PatientDashboard() {
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Patient workspace</p>
-          <h1>Records and access</h1>
+          <p className="eyebrow">Patient Workspace</p>
+          <h1>Records and Access</h1>
         </div>
         <div className="header-actions">
           <button className="icon-button secondary" onClick={loadRecords} aria-label="Refresh records">
@@ -431,14 +493,14 @@ export default function PatientDashboard() {
 
       <section className="stat-grid">
         <StatCard icon={FileText} label="Records" value={records.length} />
-        <StatCard icon={ShieldCheck} label="Shared keys" value={keyRows.length} accent="green" />
-        <StatCard icon={History} label="Audit events" value={auditTrail.length || "Load tab"} accent="amber" />
-        <StatCard icon={Clock3} label="Latest upload" value={lastUpload} />
+        <StatCard icon={ShieldCheck} label="Shared Keys" value={keyRows.length} accent="green" />
+        <StatCard icon={History} label="Audit Events" value={auditTrail.length || "Load tab"} accent="amber" />
+        <StatCard icon={Clock3} label="Latest Upload" value={lastUpload} />
       </section>
 
       <section className="panel upload-panel">
         <div>
-          <h2>Upload details</h2>
+          <h2>Upload Details</h2>
           <p>These details will be saved with the next record you upload.</p>
         </div>
         <div className="metadata-panel">
@@ -461,21 +523,41 @@ export default function PatientDashboard() {
               type="checkbox"
               checked={uploadMeta.emergency}
               onChange={(event) => setUploadMeta({ ...uploadMeta, emergency: event.target.checked })}
+              disabled={uploadInProgress}
             />
             Emergency record
           </label>
-          <label className="icon-button with-label upload-button">
-            <Upload size={16} />
-            Upload Record
-            <input type="file" accept="application/pdf,image/*" onChange={uploadRecord} hidden />
+          <label className={`icon-button with-label upload-button ${uploadInProgress ? "is-disabled" : ""}`}>
+            {uploadInProgress ? <LoaderCircle className="spin-icon" size={16} /> : <Upload size={16} />}
+            {uploadInProgress ? "Uploading..." : "Upload Record"}
+            <input type="file" accept="application/pdf,image/*" onChange={uploadRecord} disabled={uploadInProgress} hidden />
           </label>
         </div>
+        {uploadStatus && (
+          <div className={`upload-status ${uploadStatus.state}`}>
+            <div className="upload-status-main">
+              {uploadStatus.state === "working" && <LoaderCircle className="spin-icon" size={18} />}
+              {uploadStatus.state === "success" && <Check size={18} />}
+              {uploadStatus.state === "error" && <X size={18} />}
+              <div>
+                <strong>{uploadStatus.title}</strong>
+                <span>{uploadStatus.detail}</span>
+              </div>
+            </div>
+            {uploadStatus.txHash && (
+              <a className="icon-link compact" href={`https://sepolia.etherscan.io/tx/${uploadStatus.txHash}`} target="_blank" rel="noreferrer">
+                <ExternalLink size={15} />
+                View tx
+              </a>
+            )}
+          </div>
+        )}
       </section>
 
       <div className="tabs">
         {["records", "archive", "consent", "requests", "notes", "documents", "profile", "notifications", "audit", "security"].map((tab) => (
           <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-            {tab[0].toUpperCase() + tab.slice(1)}
+            {tab === "audit" ? "Audit" : tab[0].toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
@@ -484,7 +566,7 @@ export default function PatientDashboard() {
       {activeTab === "archive" && renderRecords()}
       {activeTab === "consent" && (
         <section className="panel request-list">
-          <h3>Patient consent summary</h3>
+          <h3>Patient Consent Summary</h3>
           {records.map((record) => {
             const meta = metadata[record.id] || {};
             const recordKeys = keyRows.filter((key) => key.recordId === record.id);
@@ -511,7 +593,7 @@ export default function PatientDashboard() {
       )}
       {activeTab === "requests" && (
         <section className="panel request-list">
-          <h3>Access requests</h3>
+          <h3>Access Requests</h3>
           {requests.map((request) => {
             const hasSharedKey = keyRows.some(
               (key) => key.recordId === request.recordId && key.recipientWallet?.toLowerCase() === request.requesterWallet?.toLowerCase()
@@ -547,7 +629,7 @@ export default function PatientDashboard() {
           {requests.length === 0 && (
             <div className="empty-state">
               <ShieldCheck size={28} />
-              <strong>No access requests</strong>
+              <strong>No Access Requests</strong>
               <span>Doctor and emergency access requests will appear here.</span>
             </div>
           )}
@@ -572,7 +654,7 @@ export default function PatientDashboard() {
           {documents.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No care documents</strong>
+              <strong>No Care Documents</strong>
               <span>Documents sent by doctors will appear here.</span>
             </div>
           )}
@@ -593,7 +675,7 @@ export default function PatientDashboard() {
           {notes.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No doctor notes</strong>
+              <strong>No Doctor Notes</strong>
               <span>Notes added by doctors will appear here.</span>
             </div>
           )}
@@ -616,7 +698,7 @@ export default function PatientDashboard() {
       {activeTab === "audit" && (
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Audit timeline</h2>
+            <h2>Audit Timeline</h2>
             <button className="icon-button with-label secondary" onClick={exportAuditPdf} disabled={auditTrail.length === 0}>
               <Download size={16} />
               Export PDF

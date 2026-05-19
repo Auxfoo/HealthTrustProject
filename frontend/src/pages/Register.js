@@ -112,7 +112,7 @@ export default function Register() {
   }
 
   return (
-    <main className="panel narrow">
+    <main className="panel narrow register-panel">
       <h1>Register</h1>
       <form className="form-grid" onSubmit={submit}>
         <label>
