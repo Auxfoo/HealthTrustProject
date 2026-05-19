@@ -222,6 +222,24 @@ test\system\system-test-cases.md
 test\usability\usability-test-plan.md
 ```
 
+## 11. Graduation Evidence Checklist
+
+Before final submission, collect the following evidence:
+
+| Evidence | Location | Status |
+| --- | --- | --- |
+| Login/register screenshot | `docs\screenshots\01-login-register.png` | To capture |
+| Patient dashboard screenshot | `docs\screenshots\02-patient-dashboard.png` | To capture |
+| Patient upload screenshot | `docs\screenshots\03-patient-upload.png` | To capture |
+| Access modal screenshot | `docs\screenshots\04-access-modal.png` | To capture |
+| Doctor records screenshot | `docs\screenshots\05-doctor-records.png` | To capture |
+| Prediction result screenshot | `docs\screenshots\06-prediction-result.png` | To capture |
+| Institution dashboard screenshot | `docs\screenshots\07-institution-dashboard.png` | To capture |
+| Manual system test results | `test\system\system-test-cases.md` | To execute |
+| Usability participant notes | `test\usability\usability-test-plan.md` | To execute |
+
+Use fake sample records only. Do not capture private keys, real medical data, or secret environment values.
+
 ## Current Prototype Features
 
 - Patient: encrypted upload, record metadata, archive, important flag, grant/revoke doctor access, grant/revoke institution access, resend/share keys, doctor notes, care documents, notifications, and audit trail.

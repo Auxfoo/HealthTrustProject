@@ -1,6 +1,7 @@
 const { ethers } = require("ethers");
 const prisma = require("../lib/prisma");
 const contractConfig = require("../../shared/contractConfig");
+const { createNotification } = require("../lib/notifications");
 
 const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || contractConfig.CONTRACT_ADDRESS;
 const CONTRACT_ABI = contractConfig.CONTRACT_ABI || [];
@@ -119,5 +120,56 @@ exports.getInstitutionDoctors = async (req, res) => {
     res.json(doctors);
   } catch (error) {
     res.status(500).json({ message: "Unable to fetch institution doctors", error: error.message });
+  }
+};
+
+async function requireInstitutionAdmin(institutionId, wallet) {
+  const institution = await prisma.institution.findUnique({ where: { institutionId: Number(institutionId) } });
+  if (!institution) return { ok: false, status: 404, message: "Institution not found" };
+  if (institution.adminWallet.toLowerCase() !== wallet.toLowerCase()) {
+    return { ok: false, status: 403, message: "Only institution admin can perform this action" };
+  }
+  return { ok: true, institution };
+}
+
+exports.linkDoctorProfile = async (req, res) => {
+  try {
+    const access = await requireInstitutionAdmin(req.params.id, req.authWallet);
+    if (!access.ok) return res.status(access.status).json({ message: access.message });
+    const doctorWallet = req.params.doctorWallet.toLowerCase();
+    await prisma.user.updateMany({
+      where: { wallet: doctorWallet, role: "doctor" },
+      data: { institutionId: Number(req.params.id) },
+    });
+    await createNotification(
+      doctorWallet,
+      "membership_approved",
+      "Institution membership active",
+      `You were added to ${access.institution.name}.`
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: "Unable to link doctor profile", error: error.message });
+  }
+};
+
+exports.unlinkDoctorProfile = async (req, res) => {
+  try {
+    const access = await requireInstitutionAdmin(req.params.id, req.authWallet);
+    if (!access.ok) return res.status(access.status).json({ message: access.message });
+    const doctorWallet = req.params.doctorWallet.toLowerCase();
+    await prisma.user.updateMany({
+      where: { wallet: doctorWallet, role: "doctor", institutionId: Number(req.params.id) },
+      data: { institutionId: null },
+    });
+    await createNotification(
+      doctorWallet,
+      "membership_removed",
+      "Removed from institution",
+      `You were removed from ${access.institution.name}.`
+    );
+    res.json({ ok: true });
+  } catch (error) {
+    res.status(500).json({ message: "Unable to unlink doctor profile", error: error.message });
   }
 };

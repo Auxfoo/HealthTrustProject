@@ -9,10 +9,27 @@ exports.createRequest = async (req, res) => {
     const institution = await prisma.institution.findUnique({ where: { institutionId: Number(institutionId) } });
     if (!institution) return res.status(404).json({ message: "Institution not found" });
 
+    const doctorWallet = req.authWallet.toLowerCase();
+    const existing = await prisma.institutionJoinRequest.findFirst({
+      where: {
+        institutionId: Number(institutionId),
+        doctorWallet,
+        status: { in: ["pending", "approved"] },
+      },
+    });
+    if (existing) {
+      return res.status(409).json({
+        message:
+          existing.status === "approved"
+            ? "You are already approved for this institution"
+            : "You already have a pending request for this institution",
+      });
+    }
+
     const request = await prisma.institutionJoinRequest.create({
       data: {
         institutionId: Number(institutionId),
-        doctorWallet: req.authWallet.toLowerCase(),
+        doctorWallet,
         message,
       },
     });
@@ -64,6 +81,12 @@ exports.updateRequest = async (req, res) => {
       where: { id: existing.id },
       data: { status },
     });
+    if (status === "approved") {
+      await prisma.user.updateMany({
+        where: { wallet: existing.doctorWallet.toLowerCase(), role: "doctor" },
+        data: { institutionId: existing.institutionId },
+      });
+    }
     await createNotification(
       existing.doctorWallet,
       `membership_${status}`,

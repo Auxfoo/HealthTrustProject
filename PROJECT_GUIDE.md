@@ -18,6 +18,69 @@ The current role workflows are:
 
 The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
 
+## 1.1 Problem Statement
+
+Medical record sharing in the Kurdistan region is still affected by fragmentation between hospitals, clinics, laboratories, and individual doctors. A patient may receive treatment in one location and then visit another provider that cannot easily access the earlier medical record. This can cause repeated tests, delays in treatment, missing context for doctors, and unnecessary manual file transfer by the patient.
+
+Traditional centralized systems can store patient files, but they usually depend on one organization controlling the database, access rules, and logs. This creates several limitations:
+
+- Patients may not have direct control over who can access each record.
+- Access history can be difficult to verify independently.
+- Central servers become attractive targets for data leaks.
+- Hospitals and clinics may use separate systems that do not communicate well.
+- Large medical files are not suitable for direct blockchain storage.
+
+HealthTrust solves this problem as a prototype by combining client-side encryption, IPFS off-chain storage, blockchain-based permissions, and role-specific workflows for patients, doctors, and institutions. The patient remains the main authority for granting and revoking future access, while the blockchain provides tamper-resistant record references and audit events.
+
+## 1.2 Project Objectives
+
+The main objectives of HealthTrust are:
+
+- Provide secure patient-controlled medical record sharing.
+- Encrypt medical files in the browser before upload.
+- Store encrypted files off-chain using IPFS/Pinata.
+- Store only CIDs, permissions, institution records, doctor membership, and audit events on-chain.
+- Support direct doctor access and institution-based access workflows.
+- Support encrypted AES key sharing through doctor-specific key envelopes.
+- Provide doctor notes, care documents, notifications, and metadata workflows.
+- Add a diabetes risk prediction prototype through a separate FastAPI ML service.
+- Clearly document prototype limitations, revocation limits, privacy boundaries, and non-diagnostic ML output.
+
+## 1.3 Project Scope
+
+Included in the current prototype:
+
+- React frontend for patient, doctor, and institution admin roles.
+- MetaMask wallet connection and Sepolia transactions.
+- Solidity smart contract for record references, permissions, institutions, doctor membership, and audit events.
+- Client-side AES encryption and encrypted key envelopes.
+- IPFS/Pinata encrypted file storage.
+- Express backend with Prisma/PostgreSQL workflow data.
+- Doctor notes, care documents, notifications, metadata, access requests, and membership requests.
+- FastAPI diabetes risk prediction using `diabetes_prediction_dataset.csv`.
+- Automated backend, blockchain, frontend build, and ML training checks.
+
+Excluded from the current prototype:
+
+- Production deployment in a real hospital.
+- Clinical diagnosis or certified medical decision support.
+- Real institution KYC or government/hospital verification.
+- Legal compliance certification.
+- Formal security audit or penetration testing.
+- Mainnet deployment.
+- Mobile application.
+- Guaranteed recovery if wallet/key material is lost.
+
+## 1.4 Methodology
+
+The project was built using the following methodology:
+
+1. Requirement analysis: identify the needs of patients, doctors, and institution admins for record upload, permission management, access review, care documentation, and prediction support.
+2. System design: separate the system into frontend, backend, blockchain, IPFS storage, PostgreSQL workflow data, and ML service layers.
+3. Implementation: develop the Solidity contract, React role dashboards, Express API routes, Prisma schema, client-side encryption, key-envelope sharing, Pinata upload flow, and FastAPI prediction service.
+4. Testing: validate backend wallet authentication, smart contract access control, frontend build compatibility, ML training/prediction, and manual browser workflows.
+5. Evaluation: document usability plans, security limitations, revocation limitations, and future improvements needed before production use.
+
 ## 2. System Architecture
 
 ```text
@@ -393,7 +456,58 @@ Fake test PDFs are available in `sample_records`:
 | `sample_discharge_summary.pdf` | Discharge summary upload/share test. |
 | `sample_clinic_visit_note.pdf` | Clinic note upload/share test. |
 
-## 15. File and Folder Reference
+## 15. Screenshots For Graduation Report
+
+Screenshots should be captured from the running local app using fake sample records and Sepolia test wallets. Do not include real patient information or private keys.
+
+Recommended screenshot list:
+
+| Screenshot | Filename | Status |
+| --- | --- | --- |
+| Login/register or wallet connection | `docs/screenshots/01-login-register.png` | To capture |
+| Patient dashboard | `docs/screenshots/02-patient-dashboard.png` | To capture |
+| Patient upload/metadata controls | `docs/screenshots/03-patient-upload.png` | To capture |
+| Record access modal | `docs/screenshots/04-access-modal.png` | To capture |
+| Doctor accessible records | `docs/screenshots/05-doctor-records.png` | To capture |
+| Diabetes prediction result | `docs/screenshots/06-prediction-result.png` | To capture |
+| Institution dashboard | `docs/screenshots/07-institution-dashboard.png` | To capture |
+
+These screenshots can be inserted into the final written report after the implementation chapter or in a results/demo chapter.
+
+## 16. References
+
+| Topic | Reference |
+| --- | --- |
+| Ethereum developer documentation | https://ethereum.org/developers/docs/ |
+| Sepolia testnet | https://ethereum.org/developers/docs/networks/#sepolia |
+| IPFS documentation | https://docs.ipfs.tech/ |
+| Pinata documentation | https://docs.pinata.cloud/ |
+| MetaMask developer documentation | https://docs.metamask.io/ |
+| FastAPI documentation | https://fastapi.tiangolo.com/ |
+| scikit-learn RandomForestClassifier | https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html |
+| Diabetes prediction dataset | https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset |
+
+## 17. Conclusion
+
+HealthTrust successfully demonstrates a prototype for decentralized, patient-controlled medical record sharing. The project shows that private medical files do not need to be stored directly on blockchain. Instead, files can be encrypted in the browser, pinned to IPFS, and referenced by CIDs on a smart contract. Patients can grant or revoke future access for doctors and institutions, while audit events provide a transparent record of permission changes.
+
+The system also demonstrates how predictive analytics can be added without sending patient identity or full uploaded records to the ML service. The diabetes prediction feature uses medical numerical inputs and returns a non-diagnostic risk result for demonstration.
+
+## 18. Future Work
+
+Future improvements include:
+
+- Real institution verification/KYC before allowing hospital or clinic registration.
+- Stronger key recovery and wallet recovery mechanisms.
+- More disease prediction models beyond diabetes.
+- OCR support for scanned medical PDFs.
+- Better audit visualizations and exportable audit reports.
+- Mobile app support for patients and doctors.
+- Formal smart contract audit and penetration testing.
+- Production deployment study with healthcare privacy and legal compliance review.
+- Integration with real hospital information systems.
+
+## 19. File and Folder Reference
 
 | File or folder | Purpose |
 | --- | --- |
@@ -415,7 +529,7 @@ Fake test PDFs are available in `sample_records`:
 | `test/` | Testing evidence and plans. |
 | `shared/contractConfig.js` | Deployed contract address and ABI. |
 
-## 16. Glossary
+## 20. Glossary
 
 | Term | Definition |
 | --- | --- |
@@ -431,7 +545,7 @@ Fake test PDFs are available in `sample_records`:
 | FastAPI | Python API framework used for the ML service. |
 | RandomForestClassifier | scikit-learn model used for diabetes prediction. |
 
-## 17. Known Limitations and Future Improvements
+## 21. Known Limitations and Future Improvements
 
 Known limitations:
 

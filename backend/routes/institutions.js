@@ -7,6 +7,8 @@ const router = express.Router();
 router.post("/register", requireWalletAuth("register-institution"), institutionController.registerInstitution);
 router.post("/addDoctor", requireWalletAuth("add-institution-doctor"), institutionController.addDoctor);
 router.post("/removeDoctor", requireWalletAuth("remove-institution-doctor"), institutionController.removeDoctor);
+router.post("/:id/doctors/:doctorWallet/link", requireWalletAuth("link-institution-doctor"), institutionController.linkDoctorProfile);
+router.delete("/:id/doctors/:doctorWallet/link", requireWalletAuth("unlink-institution-doctor"), institutionController.unlinkDoctorProfile);
 router.get("/", institutionController.getInstitutions);
 router.get("/:id/doctors", institutionController.getInstitutionDoctors);
 

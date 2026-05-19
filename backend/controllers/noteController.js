@@ -26,7 +26,16 @@ async function validateDoctorRecordAccess(recordId, patientWallet, doctorWallet)
     return { ok: false, status: 400, message: "Patient wallet does not match the selected record" };
   }
   const hasAccess = await contract.hasAccess(Number(recordId), doctorWallet);
-  if (!hasAccess) return { ok: false, status: 403, message: "Doctor does not have access to this record" };
+  if (!hasAccess) {
+    const keyEnvelope = await prisma.recordKey.findFirst({
+      where: {
+        recordId: Number(recordId),
+        recipientWallet: doctorWallet.toLowerCase(),
+        ownerWallet: patientWallet.toLowerCase(),
+      },
+    });
+    if (!keyEnvelope) return { ok: false, status: 403, message: "Doctor does not have access to this record" };
+  }
   return { ok: true };
 }
 

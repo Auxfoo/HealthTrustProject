@@ -1,16 +1,27 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Download, FilePlus2, FileSearch, RefreshCw, Search, Stethoscope, UsersRound } from "lucide-react";
+import {
+  AlertTriangle,
+  Download,
+  FilePlus2,
+  FileSearch,
+  RefreshCw,
+  Search,
+  Stethoscope,
+  UserRound,
+  UsersRound,
+} from "lucide-react";
 import { ethers } from "ethers";
 import PredictionForm from "../components/PredictionForm";
 import NotificationsPanel from "../components/NotificationsPanel";
 import RecordCard from "../components/RecordCard";
 import RiskMeter from "../components/RiskMeter";
+import SecurityModel from "../components/SecurityModel";
 import StatCard from "../components/StatCard";
 import { useWallet } from "../context/WalletContext";
 import { decryptFile } from "../utils/encryption";
-import { getAllRecords, hasAccess } from "../utils/contractHelper";
+import { getAllRecords, getBrowserProvider, getContract, hasAccess } from "../utils/contractHelper";
 import { createAuthHeaders } from "../utils/auth";
 import { decryptRecordKey } from "../utils/keySharing";
 
@@ -92,20 +103,27 @@ function extractPredictionValues(bytes) {
 }
 
 export default function DoctorDashboard() {
-  const { walletAddress, API_URL } = useWallet();
+  const { walletAddress, API_URL, userProfile } = useWallet();
   const [activeTab, setActiveTab] = useState("records");
   const [records, setRecords] = useState([]);
   const [metadata, setMetadata] = useState({});
+  const [emergencyRecords, setEmergencyRecords] = useState([]);
   const [institutions, setInstitutions] = useState([]);
   const [membershipRequests, setMembershipRequests] = useState([]);
+  const [accessRequests, setAccessRequests] = useState([]);
   const [notes, setNotes] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [predictionHistory, setPredictionHistory] = useState([]);
+  const [chainAuditRows, setChainAuditRows] = useState([]);
+  const [patientProfiles, setPatientProfiles] = useState({});
   const [result, setResult] = useState(null);
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [flagFilter, setFlagFilter] = useState("all");
   const [predictionValues, setPredictionValues] = useState(emptyPredictionValues);
   const [predictionPatientWallet, setPredictionPatientWallet] = useState("");
   const [joinForm, setJoinForm] = useState({ institutionId: "", message: "" });
+  const [emergencyForm, setEmergencyForm] = useState({ patientWallet: "", recordId: "", reason: "" });
   const [noteForm, setNoteForm] = useState({ recordId: "", patientWallet: "", status: "reviewed", note: "" });
   const [docForm, setDocForm] = useState({
     sourceRecordId: "",
@@ -115,9 +133,53 @@ export default function DoctorDashboard() {
     content: "",
   });
 
+  async function loadDoctorChainAuditRows() {
+    const provider = await getBrowserProvider();
+    const contract = getContract(provider);
+    const filters = [
+      contract.filters.AccessGrantedToDoctor(null, walletAddress),
+      contract.filters.AccessRevokedFromDoctor(null, walletAddress),
+      contract.filters.RecordAddedForPatient(null, walletAddress),
+    ].filter(Boolean);
+    const logs = (await Promise.all(filters.map((filter) => contract.queryFilter(filter, 0, "latest")))).flat();
+    const rows = await Promise.all(
+      logs.map(async (log) => {
+        const block = await provider.getBlock(log.blockNumber);
+        return {
+          action: log.fragment.name,
+          target: log.args.patient || log.args.createdBy || "-",
+          detail: log.args.recordId ? `Record #${Number(log.args.recordId)}` : "",
+          timestamp: new Date(Number(block.timestamp) * 1000),
+        };
+      })
+    );
+    setChainAuditRows(rows);
+  }
+
   async function loadAccessibleRecords() {
     const headers = await createAuthHeaders(walletAddress);
     const allRecords = await getAllRecords();
+    const allIds = allRecords.map((record) => record.id).join(",");
+    if (allIds) {
+      const [allMeta, accessRequestResponse] = await Promise.all([
+        axios.get(`${API_URL}/api/records/metadata/bulk?ids=${allIds}`),
+        axios.get(`${API_URL}/api/access-requests`, { headers }),
+      ]);
+      const allMetadataById = Object.fromEntries(allMeta.data.map((row) => [row.recordId, row]));
+      const accessChecks = await Promise.all(allRecords.map((record) => hasAccess(record.id, walletAddress)));
+      const blockedEmergencyRecordIds = new Set(
+        accessRequestResponse.data
+          .filter((request) => ["pending", "approved"].includes(request.status))
+          .map((request) => Number(request.recordId))
+      );
+      setEmergencyRecords(
+        allRecords
+          .filter((record, index) => allMetadataById[record.id]?.emergency && !accessChecks[index] && !blockedEmergencyRecordIds.has(record.id))
+          .map((record) => ({ ...record, metadata: allMetadataById[record.id] }))
+      );
+    } else {
+      setEmergencyRecords([]);
+    }
     const checks = await Promise.all(allRecords.map((record) => hasAccess(record.id, walletAddress)));
     const chainAccessible = allRecords.filter((_, index) => checks[index]);
     const keyChecks = await Promise.all(
@@ -139,21 +201,31 @@ export default function DoctorDashboard() {
       setMetadata({});
     }
 
-    const [institutionsResponse, membershipResponse, noteResponse, docResponse, historyResponse] = await Promise.all([
+    const [institutionsResponse, membershipResponse, accessRequestResponse, noteResponse, docResponse, historyResponse] = await Promise.all([
       axios.get(`${API_URL}/api/institutions`),
       axios.get(`${API_URL}/api/membership-requests`, { headers }),
+      axios.get(`${API_URL}/api/access-requests`, { headers }),
       axios.get(`${API_URL}/api/notes`, { headers }),
       axios.get(`${API_URL}/api/doctor-documents`, { headers }),
       axios.get(`${API_URL}/api/predict/history`, { headers }),
     ]);
     setInstitutions(institutionsResponse.data);
     setMembershipRequests(membershipResponse.data);
+    setAccessRequests(accessRequestResponse.data);
     setNotes(noteResponse.data);
     setDocuments(docResponse.data);
     setPredictionHistory(historyResponse.data);
-    if (institutionsResponse.data[0] && !joinForm.institutionId) {
-      setJoinForm((current) => ({ ...current, institutionId: String(institutionsResponse.data[0].institutionId) }));
-    }
+    const patientWallets = [...new Set(accessible.map((record) => record.uploadedBy?.toLowerCase()).filter(Boolean))];
+    const profileRows = await Promise.all(
+      patientWallets.map((wallet) =>
+        axios
+          .get(`${API_URL}/api/users/${wallet}`)
+          .then((profileResponse) => [wallet, profileResponse.data])
+          .catch(() => [wallet, null])
+      )
+    );
+    setPatientProfiles(Object.fromEntries(profileRows));
+    await loadDoctorChainAuditRows();
   }
 
   useEffect(() => {
@@ -164,18 +236,102 @@ export default function DoctorDashboard() {
     () =>
       records.filter((record) => {
         const meta = metadata[record.id] || {};
+        if (categoryFilter !== "all" && (meta.category || "other") !== categoryFilter) return false;
+        if (flagFilter === "important" && !meta.important) return false;
+        if (flagFilter === "emergency" && !meta.emergency) return false;
         return `${record.id} ${record.cid} ${record.uploadedBy} ${meta.title || ""} ${meta.filename || ""}`
           .toLowerCase()
           .includes(search.toLowerCase());
       }),
-    [records, metadata, search]
+    [records, metadata, search, categoryFilter, flagFilter]
   );
+  const patientGroups = useMemo(() => {
+    const groups = {};
+    records.forEach((record) => {
+      const wallet = record.uploadedBy?.toLowerCase();
+      if (!wallet) return;
+      if (!groups[wallet]) groups[wallet] = [];
+      groups[wallet].push(record);
+    });
+    return groups;
+  }, [records]);
+  const riskFactors = useMemo(() => {
+    if (!result) return [];
+    const factors = [];
+    const glucose = Number(predictionValues.blood_glucose_level);
+    const hba1c = Number(predictionValues.HbA1c_level);
+    const bmi = Number(predictionValues.bmi);
+    const age = Number(predictionValues.age);
+    if (Number.isFinite(hba1c) && hba1c >= 6.5) factors.push("HbA1c is in a high range.");
+    if (Number.isFinite(glucose) && glucose >= 140) factors.push("Blood glucose is elevated.");
+    if (Number.isFinite(bmi) && bmi >= 30) factors.push("BMI is in an obesity range.");
+    if (Number.isFinite(age) && age >= 55) factors.push("Age increases diabetes risk in the model.");
+    if (predictionValues.hypertension === "1") factors.push("Hypertension is present.");
+    if (predictionValues.heart_disease === "1") factors.push("Heart disease is present.");
+    if (!factors.length) factors.push("No single high-risk input stands out; the result comes from the combined model features.");
+    return factors;
+  }, [result, predictionValues]);
+  const auditRows = useMemo(() => {
+    const membershipRows = membershipRequests.map((request) => ({
+      action: `Membership ${request.status}`,
+      target: `Institution #${request.institutionId}`,
+      detail: request.message || "Institution membership request",
+      timestamp: new Date(request.updatedAt || request.createdAt),
+    }));
+    const accessRows = accessRequests.map((request) => ({
+      action: `${request.requestType === "emergency" ? "Emergency access" : "Access"} ${request.status}`,
+      target: request.patientWallet,
+      detail: `Record #${request.recordId}${request.reason ? ` - ${request.reason}` : ""}`,
+      timestamp: new Date(request.updatedAt || request.createdAt),
+    }));
+    const noteRows = notes.map((note) => ({
+      action: "Doctor note saved",
+      target: note.patientWallet,
+      detail: `Record #${note.recordId} - ${note.status}`,
+      timestamp: new Date(note.updatedAt || note.createdAt),
+    }));
+    const documentRows = documents.map((document) => ({
+      action: "Care document sent",
+      target: document.patientWallet,
+      detail: `${document.documentType}: ${document.title}`,
+      timestamp: new Date(document.createdAt),
+    }));
+    const predictionRows = predictionHistory.map((row) => ({
+      action: "Diabetes prediction run",
+      target: row.patientWallet || "No patient linked",
+      detail: `${Math.round(row.probability * 100)}% risk`,
+      timestamp: new Date(row.createdAt),
+    }));
+    return [...chainAuditRows, ...membershipRows, ...accessRows, ...noteRows, ...documentRows, ...predictionRows].sort((a, b) => b.timestamp - a.timestamp);
+  }, [chainAuditRows, membershipRequests, accessRequests, notes, documents, predictionHistory]);
   const patientCount = new Set(records.map((record) => record.uploadedBy.toLowerCase())).size;
   const riskLabel = result ? `${Math.round(result.probability * 100)}%` : "Not run";
   const hasAccessibleRecords = records.length > 0;
+  const unavailableInstitutionIds = useMemo(() => {
+    const ids = new Set(
+      membershipRequests
+        .filter((request) => ["pending", "approved"].includes(request.status))
+        .map((request) => String(request.institutionId))
+    );
+    if (userProfile?.institutionId) ids.add(String(userProfile.institutionId));
+    return ids;
+  }, [membershipRequests, userProfile]);
+  const availableInstitutions = useMemo(
+    () => institutions.filter((institution) => !unavailableInstitutionIds.has(String(institution.institutionId))),
+    [institutions, unavailableInstitutionIds]
+  );
+
+  useEffect(() => {
+    if (!availableInstitutions.some((institution) => String(institution.institutionId) === String(joinForm.institutionId))) {
+      const nextInstitutionId = availableInstitutions[0] ? String(availableInstitutions[0].institutionId) : "";
+      if (String(joinForm.institutionId) !== nextInstitutionId) {
+        setJoinForm((current) => ({ ...current, institutionId: nextInstitutionId }));
+      }
+    }
+  }, [availableInstitutions, joinForm.institutionId]);
 
   async function downloadRecord(record) {
-    const toastId = toast.loading("Fetching encrypted record...");
+    const toastId = toast.info("Fetching encrypted record...", { autoClose: 3000 });
     try {
       const keyResponse = await axios.get(`${API_URL}/api/record-keys/${record.id}`, {
         headers: await createAuthHeaders(walletAddress),
@@ -218,7 +374,7 @@ export default function DoctorDashboard() {
   async function requestMembership(event) {
     event.preventDefault();
     if (!joinForm.institutionId) {
-      toast.error("Choose an institution first");
+      toast.error("No available institution to request");
       return;
     }
     try {
@@ -232,6 +388,34 @@ export default function DoctorDashboard() {
       await loadAccessibleRecords();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || "Unable to send membership request");
+    }
+  }
+
+  async function requestEmergencyAccess(event) {
+    event.preventDefault();
+    if (!ethers.isAddress(emergencyForm.patientWallet)) {
+      toast.error("Enter a valid patient wallet address");
+      return;
+    }
+    if (!emergencyForm.recordId || !emergencyForm.reason.trim()) {
+      toast.error("Record ID and emergency reason are required");
+      return;
+    }
+    try {
+      await axios.post(
+        `${API_URL}/api/access-requests`,
+        {
+          patientWallet: emergencyForm.patientWallet,
+          recordId: Number(emergencyForm.recordId),
+          requestType: "emergency",
+          reason: emergencyForm.reason,
+        },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
+      toast.success("Emergency access request sent");
+      setEmergencyForm({ patientWallet: "", recordId: "", reason: "" });
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || "Unable to request emergency access");
     }
   }
 
@@ -271,7 +455,7 @@ export default function DoctorDashboard() {
       toast.error("Enter a valid patient wallet address");
       return;
     }
-    const toastId = toast.loading("Creating care document...");
+    const toastId = toast.info("Creating care document...", { autoClose: 3000 });
     try {
       await axios.post(
         `${API_URL}/api/doctor-documents`,
@@ -306,7 +490,7 @@ export default function DoctorDashboard() {
       </section>
 
       <div className="tabs">
-        {["records", "notes", "documents", "membership", "prediction", "history", "notifications"].map((tab) => (
+        {["records", "patients", "emergency", "notes", "documents", "membership", "prediction", "history", "audit", "notifications", "security"].map((tab) => (
           <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
             {tab[0].toUpperCase() + tab.slice(1)}
           </button>
@@ -318,6 +502,19 @@ export default function DoctorDashboard() {
           <div className="toolbar">
             <Search size={17} />
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search records or patient" />
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter category">
+              <option value="all">All categories</option>
+              <option value="lab">Lab</option>
+              <option value="prescription">Prescription</option>
+              <option value="diagnosis">Diagnosis</option>
+              <option value="imaging">Imaging</option>
+              <option value="other">Other</option>
+            </select>
+            <select value={flagFilter} onChange={(event) => setFlagFilter(event.target.value)} aria-label="Filter flags">
+              <option value="all">All flags</option>
+              <option value="important">Important</option>
+              <option value="emergency">Emergency</option>
+            </select>
           </div>
           <section className="record-list">
             {filteredRecords.map((record) => (
@@ -341,6 +538,116 @@ export default function DoctorDashboard() {
             )}
           </section>
         </>
+      )}
+
+      {activeTab === "patients" && (
+        <section className="panel request-list">
+          <h3>Patient workspace</h3>
+          {Object.entries(patientGroups).map(([wallet, patientRecords]) => {
+            const profile = patientProfiles[wallet];
+            const patientNotes = notes.filter((note) => note.patientWallet?.toLowerCase() === wallet);
+            const patientDocs = documents.filter((document) => document.patientWallet?.toLowerCase() === wallet);
+            const patientPredictions = predictionHistory.filter((row) => row.patientWallet?.toLowerCase() === wallet);
+            return (
+              <article className="request-row" key={wallet}>
+                <div>
+                  <strong>
+                    <UserRound size={16} /> {profile?.name || "Patient"}
+                  </strong>
+                  <span>{wallet}</span>
+                  <small>
+                    {patientRecords.length} record(s) - {patientNotes.length} note(s) - {patientDocs.length} care document(s) -{" "}
+                    {patientPredictions.length} prediction(s)
+                  </small>
+                  {profile && (
+                    <span>
+                      Blood: {profile.bloodType || "N/A"} - Allergies: {profile.allergies || "N/A"} - Conditions:{" "}
+                      {profile.chronicConditions || "N/A"}
+                    </span>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+          {Object.keys(patientGroups).length === 0 && (
+            <div className="empty-state">
+              <UserRound size={28} />
+              <strong>No patient workspace yet</strong>
+              <span>Patients appear here after they grant you decryptable record access.</span>
+            </div>
+          )}
+        </section>
+      )}
+
+      {activeTab === "emergency" && (
+        <section className="panel split-panel">
+          <form className="form-grid" onSubmit={requestEmergencyAccess}>
+            <label>
+              Emergency-visible record
+              <select
+                value={emergencyForm.recordId}
+                onChange={(event) => {
+                  const selected = emergencyRecords.find((record) => String(record.id) === event.target.value);
+                  setEmergencyForm({
+                    ...emergencyForm,
+                    recordId: event.target.value,
+                    patientWallet: selected?.uploadedBy || "",
+                  });
+                }}
+                required
+                disabled={emergencyRecords.length === 0}
+              >
+                <option value="">Choose emergency record</option>
+                {emergencyRecords.map((record) => (
+                  <option key={record.id} value={record.id}>
+                    Record #{record.id} - {record.metadata?.title || record.metadata?.filename || record.uploadedBy}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Patient wallet
+              <input value={emergencyForm.patientWallet} readOnly required />
+            </label>
+            <label>
+              Clinical reason
+              <textarea
+                value={emergencyForm.reason}
+                onChange={(event) => setEmergencyForm({ ...emergencyForm, reason: event.target.value })}
+                required
+              />
+            </label>
+            <button disabled={!emergencyForm.recordId}>
+              <AlertTriangle size={16} />
+              Request emergency access
+            </button>
+          </form>
+          <div className="request-list">
+            <div className="notice">
+              <strong>Emergency mode</strong>
+              <span>
+                Choose a record the patient marked emergency-visible. This sends a clearly labeled request and notification;
+                the patient still controls final on-chain access and encrypted key sharing.
+              </span>
+            </div>
+            {emergencyRecords.map((record) => (
+              <article className="request-row" key={record.id}>
+                <div>
+                  <strong>{record.metadata?.title || record.metadata?.filename || `Record #${record.id}`}</strong>
+                  <span>Record #{record.id} - {record.uploadedBy}</span>
+                  <small>{record.metadata?.category || "other"}</small>
+                </div>
+              </article>
+            ))}
+            {emergencyRecords.length === 0 && (
+              <div className="empty-state">
+                <AlertTriangle size={28} />
+                <strong>No emergency-visible records</strong>
+                <span>Records patients mark as emergency will appear here.</span>
+              </div>
+            )}
+          </div>
+        </section>
       )}
 
       {activeTab === "notes" && (
@@ -483,10 +790,10 @@ export default function DoctorDashboard() {
               <select
                 value={joinForm.institutionId}
                 onChange={(event) => setJoinForm({ ...joinForm, institutionId: event.target.value })}
-                disabled={institutions.length === 0}
+                disabled={availableInstitutions.length === 0}
               >
-                {institutions.length === 0 && <option value="">No institutions available</option>}
-                {institutions.map((institution) => (
+                {availableInstitutions.length === 0 && <option value="">No available institutions</option>}
+                {availableInstitutions.map((institution) => (
                   <option key={institution.institutionId} value={institution.institutionId}>
                     {institution.name} ({institution.institutionType})
                   </option>
@@ -498,6 +805,9 @@ export default function DoctorDashboard() {
               <textarea value={joinForm.message} onChange={(event) => setJoinForm({ ...joinForm, message: event.target.value })} />
             </label>
             <button disabled={!joinForm.institutionId}>Request membership</button>
+            {availableInstitutions.length === 0 && (
+              <span className="muted">Institutions with pending or approved requests are hidden from this list.</span>
+            )}
           </form>
           <div className="request-list">
             {membershipRequests.map((request) => (
@@ -531,6 +841,16 @@ export default function DoctorDashboard() {
             <div className="result-card">
               <h2>{result.prediction === 1 ? "Diabetic risk indicated" : "No diabetic risk indicated"}</h2>
               <RiskMeter probability={result.probability} />
+              <div className="request-list">
+                <article className="request-row">
+                  <div>
+                    <strong>Main contributing values</strong>
+                    {riskFactors.map((factor) => (
+                      <span key={factor}>{factor}</span>
+                    ))}
+                  </div>
+                </article>
+              </div>
               <p>This is not a medical diagnosis.</p>
             </div>
           )}
@@ -556,7 +876,34 @@ export default function DoctorDashboard() {
         </section>
       )}
 
+      {activeTab === "audit" && (
+        <section className="panel">
+          <div className="panel-title-row">
+            <h2>Doctor audit timeline</h2>
+          </div>
+          {auditRows.length > 0 ? (
+            <div className="timeline">
+              {auditRows.map((row, index) => (
+                <article className="timeline-item" key={`${row.action}-${row.target}-${index}`}>
+                  <strong>{row.action}</strong>
+                  <span>{row.target}</span>
+                  {row.detail && <small>{row.detail}</small>}
+                  <small>{row.timestamp.toLocaleString()}</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <Stethoscope size={28} />
+              <strong>No audit events yet</strong>
+              <span>Membership, access requests, notes, documents, and predictions will appear here.</span>
+            </div>
+          )}
+        </section>
+      )}
+
       {activeTab === "notifications" && <NotificationsPanel />}
+      {activeTab === "security" && <SecurityModel />}
     </main>
   );
 }

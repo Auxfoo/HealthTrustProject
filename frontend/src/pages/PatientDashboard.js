@@ -1,20 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { Archive, Clock3, Download, FileText, History, RefreshCw, Search, ShieldCheck, Upload } from "lucide-react";
+import { Archive, Clock3, Download, FileText, History, RefreshCw, Search, ShieldCheck, Upload, Check, X, FileKey2 } from "lucide-react";
 import { useWallet } from "../context/WalletContext";
 import AccessModal from "../components/AccessModal";
 import NotificationsPanel from "../components/NotificationsPanel";
 import RecordCard from "../components/RecordCard";
+import SecurityModel from "../components/SecurityModel";
 import StatCard from "../components/StatCard";
 import {
   addRecord,
   getBrowserProvider,
   getContract,
+  grantAccessToDoctor,
   parseReceiptEvent,
 } from "../utils/contractHelper";
 import { encryptFile, generateRandomKey } from "../utils/encryption";
 import { createAuthHeaders } from "../utils/auth";
+import { buildDoctorKeyEnvelope, storeKeyEnvelope } from "../utils/recordSharing";
+import { createHealthTrustPdf } from "../utils/pdfReport";
 
 function metadataKey(wallet) {
   return `healthtrust_record_metadata_${wallet?.toLowerCase()}`;
@@ -29,31 +33,6 @@ function saveLocalMetadata(wallet, recordId, data) {
   localStorage.setItem(metadataKey(wallet), JSON.stringify({ ...current, [recordId]: { ...current[recordId], ...data } }));
 }
 
-function makePdf(title, lines) {
-  const text = [title, "", ...lines].join("\n").replace(/[()\\]/g, "\\$&");
-  const stream = `BT /F1 12 Tf 50 780 Td 16 TL (${text.replace(/\n/g, ") Tj T* (")}) Tj ET`;
-  const objects = [
-    "1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj",
-    "2 0 obj << /Type /Pages /Kids [3 0 R] /Count 1 >> endobj",
-    "3 0 obj << /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >> endobj",
-    "4 0 obj << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> endobj",
-    `5 0 obj << /Length ${stream.length} >> stream\n${stream}\nendstream endobj`,
-  ];
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-  objects.forEach((object) => {
-    offsets.push(pdf.length);
-    pdf += `${object}\n`;
-  });
-  const xref = pdf.length;
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  offsets.slice(1).forEach((offset) => {
-    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
-  });
-  pdf += `trailer << /Root 1 0 R /Size ${objects.length + 1} >>\nstartxref\n${xref}\n%%EOF`;
-  return new Blob([pdf], { type: "application/pdf" });
-}
-
 export default function PatientDashboard() {
   const { walletAddress, API_URL, userProfile, fetchProfile } = useWallet();
   const [records, setRecords] = useState([]);
@@ -61,10 +40,13 @@ export default function PatientDashboard() {
   const [keyRows, setKeyRows] = useState([]);
   const [notes, setNotes] = useState([]);
   const [documents, setDocuments] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [activeTab, setActiveTab] = useState("records");
   const [auditTrail, setAuditTrail] = useState([]);
   const [search, setSearch] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [flagFilter, setFlagFilter] = useState("all");
   const [uploadMeta, setUploadMeta] = useState({ category: "lab", provider: "", notes: "", important: false, emergency: false });
   const [profile, setProfile] = useState({});
 
@@ -79,18 +61,21 @@ export default function PatientDashboard() {
     setMetadata(merged);
 
     const headers = await createAuthHeaders(walletAddress);
-    const [keys, noteResponse, docs] = await Promise.all([
+    const [keys, noteResponse, docs, accessRequests] = await Promise.all([
       axios.get(`${API_URL}/api/record-keys/owned`, { headers }),
       axios.get(`${API_URL}/api/notes`, { headers }),
       axios.get(`${API_URL}/api/doctor-documents`, { headers }),
+      axios.get(`${API_URL}/api/access-requests`, { headers }),
     ]);
     setKeyRows(keys.data);
     setNotes(noteResponse.data);
     setDocuments(docs.data);
+    setRequests(accessRequests.data);
   }
 
   async function loadAuditTrail() {
     try {
+      const headers = await createAuthHeaders(walletAddress);
       const provider = await getBrowserProvider();
       const contract = getContract(provider);
       const filters = [
@@ -101,7 +86,7 @@ export default function PatientDashboard() {
         contract.filters.RecordAddedForPatient?.(walletAddress),
       ].filter(Boolean);
       const logs = (await Promise.all(filters.map((filter) => contract.queryFilter(filter, 0, "latest")))).flat();
-      const rows = await Promise.all(
+      const chainRows = await Promise.all(
         logs.map(async (log) => {
           const block = await provider.getBlock(log.blockNumber);
           return {
@@ -112,6 +97,36 @@ export default function PatientDashboard() {
           };
         })
       );
+      const requestRows = requests.map((request) => ({
+        action: request.requestType === "emergency" ? "EmergencyAccessRequested" : "AccessRequested",
+        target: request.requesterWallet,
+        recordId: request.recordId,
+        timestamp: new Date(request.createdAt).toLocaleString(),
+        detail: request.reason || request.status,
+      }));
+      const noteRows = notes.map((note) => ({
+        action: "DoctorNoteAdded",
+        target: note.doctorWallet,
+        recordId: note.recordId,
+        timestamp: new Date(note.updatedAt || note.createdAt).toLocaleString(),
+        detail: note.status,
+      }));
+      const documentRows = documents.map((document) => ({
+        action: "CareDocumentAdded",
+        target: document.doctorWallet,
+        recordId: document.recordId || "-",
+        timestamp: new Date(document.createdAt).toLocaleString(),
+        detail: document.title,
+      }));
+      const notificationResponse = await axios.get(`${API_URL}/api/notifications`, { headers });
+      const notificationRows = notificationResponse.data.map((notification) => ({
+        action: `Notification: ${notification.title}`,
+        target: notification.type,
+        recordId: "-",
+        timestamp: new Date(notification.createdAt).toLocaleString(),
+        detail: notification.message,
+      }));
+      const rows = [...chainRows, ...requestRows, ...noteRows, ...documentRows, ...notificationRows];
       setAuditTrail(rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
     } catch (error) {
       toast.error(error.reason || error.message || "Unable to load history");
@@ -140,11 +155,14 @@ export default function PatientDashboard() {
         const meta = metadata[record.id] || {};
         if (activeTab === "archive" && !meta.archived) return false;
         if (meta.archived && activeTab !== "archive") return false;
+        if (categoryFilter !== "all" && (meta.category || "other") !== categoryFilter) return false;
+        if (flagFilter === "important" && !meta.important) return false;
+        if (flagFilter === "emergency" && !meta.emergency) return false;
         return `${record.id} ${record.cid} ${meta.filename || ""} ${meta.title || ""} ${meta.category || ""}`
           .toLowerCase()
           .includes(search.toLowerCase());
       }),
-    [records, metadata, search, activeTab]
+    [records, metadata, search, activeTab, categoryFilter, flagFilter]
   );
 
   const lastUpload = records.length
@@ -155,7 +173,7 @@ export default function PatientDashboard() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const toastId = toast.loading("Encrypting record...");
+    const toastId = toast.info("Encrypting record...", { autoClose: 3000 });
     try {
       const key = generateRandomKey();
       const encryptedString = await encryptFile(await file.arrayBuffer(), key);
@@ -163,12 +181,12 @@ export default function PatientDashboard() {
       const formData = new FormData();
       formData.append("file", blob, `${file.name}.encrypted.txt`);
 
-      toast.update(toastId, { render: "Pinning encrypted file to IPFS...", isLoading: true });
+      toast.update(toastId, { render: "Pinning encrypted file to IPFS...", type: "info", isLoading: false, autoClose: 3000 });
       const response = await axios.post(`${API_URL}/api/records/upload`, formData, {
         headers: await createAuthHeaders(walletAddress),
       });
 
-      toast.update(toastId, { render: "Confirming record on-chain...", isLoading: true });
+      toast.update(toastId, { render: "Confirming record on-chain...", type: "info", isLoading: false, autoClose: 3000 });
       const tx = await addRecord(response.data.cid);
       const receipt = await tx.wait();
       const eventLog = await parseReceiptEvent(receipt, "RecordAdded");
@@ -225,21 +243,102 @@ export default function PatientDashboard() {
   }
 
   function downloadCarePdf(careDocument) {
-    const blob = makePdf(careDocument.title, [
-      `Type: ${careDocument.documentType}`,
-      `Doctor: ${careDocument.doctorWallet}`,
-      `Patient: ${careDocument.patientWallet}`,
-      `Created: ${new Date(careDocument.createdAt).toLocaleString()}`,
-      "",
-      careDocument.content || "Encrypted file is stored on IPFS.",
-      careDocument.cid ? `IPFS CID: ${careDocument.cid}` : "",
-    ]);
+    const blob = createHealthTrustPdf({
+      title: careDocument.title,
+      subtitle: "Care document generated inside the HealthTrust patient vault.",
+      meta: [
+        { label: "Type", value: careDocument.documentType },
+        { label: "Created", value: new Date(careDocument.createdAt).toLocaleString() },
+        { label: "Doctor wallet", value: careDocument.doctorWallet },
+        { label: "Patient wallet", value: careDocument.patientWallet },
+      ],
+      sections: [
+        {
+          heading: "Clinical Content",
+          accent: "#22b8aa",
+          rows: [careDocument.content || "Encrypted file is stored on IPFS."],
+        },
+        ...(careDocument.cid
+          ? [
+              {
+                heading: "Storage Reference",
+                accent: "#0a84ff",
+                rows: [{ label: "IPFS CID", value: careDocument.cid }],
+              },
+            ]
+          : []),
+      ],
+      footer: "HealthTrust care document - prototype, not a clinical certification",
+    });
     const url = URL.createObjectURL(blob);
     const link = window.document.createElement("a");
     link.href = url;
     link.download = `${careDocument.title.replace(/[^a-z0-9_-]+/gi, "_")}.pdf`;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  function exportAuditPdf() {
+    const rows = auditTrail.length ? auditTrail : [];
+    const blob = createHealthTrustPdf({
+      title: "Patient Audit Report",
+      subtitle: "Tamper-resistant access and workflow timeline exported from HealthTrust.",
+      meta: [
+        { label: "Patient wallet", value: walletAddress },
+        { label: "Generated", value: new Date().toLocaleString() },
+        { label: "Events", value: String(rows.length) },
+        { label: "Network", value: "Sepolia prototype" },
+      ],
+      sections: [
+        {
+          heading: "Audit Timeline",
+          accent: "#0a84ff",
+          rows: rows.map((row) => ({
+            label: row.action,
+            value: `${row.timestamp} | Record: ${row.recordId} | Target: ${row.target}${row.detail ? ` | ${row.detail}` : ""}`,
+          })),
+        },
+      ],
+      footer: "HealthTrust audit report - blockchain events plus application workflow events",
+    });
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url;
+    link.download = "healthtrust-audit-report.pdf";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function grantDoctorAccessForRequest(request) {
+    const record = records.find((item) => item.id === Number(request.recordId));
+    if (!record) throw new Error("Record was not found in your patient records.");
+    const aesKey = metadata[record.id]?.aesKey;
+    if (!aesKey) {
+      throw new Error("AES key is missing in this browser. Use the record Manage screen to resend/share the key.");
+    }
+    const envelope = await buildDoctorKeyEnvelope(API_URL, walletAddress, request.requesterWallet, record, aesKey);
+    const tx = await grantAccessToDoctor(record.id, request.requesterWallet);
+    await tx.wait();
+    await storeKeyEnvelope(API_URL, walletAddress, envelope);
+  }
+
+  async function updateRequest(request, status) {
+    try {
+      const isDoctorAccess = request.requestType === "doctor" || request.requestType === "emergency";
+      if (status === "approved" && isDoctorAccess) {
+        await grantDoctorAccessForRequest(request);
+      }
+      await axios.patch(
+        `${API_URL}/api/access-requests/${request.id}`,
+        { status },
+        { headers: await createAuthHeaders(walletAddress) }
+      );
+      toast.success(status === "approved" && isDoctorAccess ? "Access granted and key shared" : `Request ${status}`);
+      await loadRecords();
+      if (activeTab === "audit") await loadAuditTrail();
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.reason || error.message || "Unable to update request");
+    }
   }
 
   function renderRecords() {
@@ -255,6 +354,19 @@ export default function PatientDashboard() {
         <div className="toolbar">
           <Search size={17} />
           <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search records or CID" />
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter category">
+            <option value="all">All categories</option>
+            <option value="lab">Lab</option>
+            <option value="prescription">Prescription</option>
+            <option value="diagnosis">Diagnosis</option>
+            <option value="imaging">Imaging</option>
+            <option value="other">Other</option>
+          </select>
+          <select value={flagFilter} onChange={(event) => setFlagFilter(event.target.value)} aria-label="Filter flags">
+            <option value="all">All flags</option>
+            <option value="important">Important</option>
+            <option value="emergency">Emergency</option>
+          </select>
         </div>
         <section className="record-list">
           {filteredRecords.map((record) => {
@@ -277,6 +389,14 @@ export default function PatientDashboard() {
                         onChange={(event) => saveRecordMetadata(record.id, { important: event.target.checked })}
                       />
                       Important
+                    </label>
+                    <label className="inline-check">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(meta.emergency)}
+                        onChange={(event) => saveRecordMetadata(record.id, { emergency: event.target.checked })}
+                      />
+                      Emergency
                     </label>
                   </>
                 }
@@ -353,7 +473,7 @@ export default function PatientDashboard() {
       </section>
 
       <div className="tabs">
-        {["records", "archive", "notes", "documents", "profile", "notifications", "audit"].map((tab) => (
+        {["records", "archive", "consent", "requests", "notes", "documents", "profile", "notifications", "audit", "security"].map((tab) => (
           <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
             {tab[0].toUpperCase() + tab.slice(1)}
           </button>
@@ -362,6 +482,77 @@ export default function PatientDashboard() {
 
       {activeTab === "records" && renderRecords()}
       {activeTab === "archive" && renderRecords()}
+      {activeTab === "consent" && (
+        <section className="panel request-list">
+          <h3>Patient consent summary</h3>
+          {records.map((record) => {
+            const meta = metadata[record.id] || {};
+            const recordKeys = keyRows.filter((key) => key.recordId === record.id);
+            return (
+              <article className="request-row" key={record.id}>
+                <div>
+                  <strong>{meta.title || meta.filename || `Record #${record.id}`}</strong>
+                  <span>Category: {meta.category || "other"} {meta.emergency ? "Emergency-visible" : ""}</span>
+                  <small>{recordKeys.length} active encrypted key envelope(s)</small>
+                  {recordKeys.map((key) => (
+                    <span key={key.id}>
+                      {key.accessType === "institution" ? `Institution #${key.accessTarget}` : key.recipientWallet} - key shared yes - {new Date(key.updatedAt).toLocaleString()}
+                    </span>
+                  ))}
+                </div>
+                <button className="icon-button secondary" onClick={() => setSelectedRecord(record)}>
+                  <FileKey2 size={16} />
+                  Manage
+                </button>
+              </article>
+            );
+          })}
+        </section>
+      )}
+      {activeTab === "requests" && (
+        <section className="panel request-list">
+          <h3>Access requests</h3>
+          {requests.map((request) => {
+            const hasSharedKey = keyRows.some(
+              (key) => key.recordId === request.recordId && key.recipientWallet?.toLowerCase() === request.requesterWallet?.toLowerCase()
+            );
+            const canCompleteGrant =
+              (request.requestType === "doctor" || request.requestType === "emergency") &&
+              (request.status === "pending" || (request.status === "approved" && !hasSharedKey));
+            return (
+              <article className={`request-row ${request.requestType === "emergency" ? "unread" : ""}`} key={request.id}>
+                <div>
+                  <strong>{request.requestType === "emergency" ? "Emergency access request" : "Access request"} for record #{request.recordId}</strong>
+                  <span>{request.requesterWallet}</span>
+                  <small>Status: {request.status} - key shared: {hasSharedKey ? "yes" : "no"}</small>
+                  {request.reason && <p>{request.reason}</p>}
+                </div>
+                <div className="row-actions">
+                  {canCompleteGrant && (
+                    <button onClick={() => updateRequest(request, "approved")}>
+                      <Check size={16} />
+                      {request.status === "approved" ? "Complete grant" : "Approve"}
+                    </button>
+                  )}
+                  {request.status === "pending" && (
+                    <button className="secondary" onClick={() => updateRequest(request, "rejected")}>
+                      <X size={16} />
+                      Reject
+                    </button>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+          {requests.length === 0 && (
+            <div className="empty-state">
+              <ShieldCheck size={28} />
+              <strong>No access requests</strong>
+              <span>Doctor and emergency access requests will appear here.</span>
+            </div>
+          )}
+        </section>
+      )}
       {activeTab === "documents" && (
         <section className="panel request-list">
           {documents.map((document) => (
@@ -424,27 +615,24 @@ export default function PatientDashboard() {
       {activeTab === "notifications" && <NotificationsPanel />}
       {activeTab === "audit" && (
         <section className="panel">
+          <div className="panel-title-row">
+            <h2>Audit timeline</h2>
+            <button className="icon-button with-label secondary" onClick={exportAuditPdf} disabled={auditTrail.length === 0}>
+              <Download size={16} />
+              Export PDF
+            </button>
+          </div>
           {auditTrail.length > 0 ? (
-            <table>
-              <thead>
-                <tr>
-                  <th>Action</th>
-                  <th>Target</th>
-                  <th>Record ID</th>
-                  <th>Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditTrail.map((row, index) => (
-                  <tr key={`${row.action}-${row.recordId}-${index}`}>
-                    <td>{row.action}</td>
-                    <td>{row.target}</td>
-                    <td>{row.recordId}</td>
-                    <td>{row.timestamp}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="timeline">
+              {auditTrail.map((row, index) => (
+                <article className="timeline-item" key={`${row.action}-${row.recordId}-${index}`}>
+                  <strong>{row.action}</strong>
+                  <span>Record #{row.recordId} - {row.target}</span>
+                  {row.detail && <small>{row.detail}</small>}
+                  <small>{row.timestamp}</small>
+                </article>
+              ))}
+            </div>
           ) : (
             <div className="empty-state">
               <History size={28} />
@@ -454,6 +642,7 @@ export default function PatientDashboard() {
           )}
         </section>
       )}
+      {activeTab === "security" && <SecurityModel />}
 
       {selectedRecord && (
         <AccessModal

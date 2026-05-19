@@ -42,7 +42,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
   }
 
   async function runTransaction(action, pendingMessage, successMessage, after) {
-    const toastId = toast.loading(pendingMessage);
+    const toastId = toast.info(pendingMessage, { autoClose: 3000 });
     try {
       const tx = await action();
       await tx.wait();
@@ -66,7 +66,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
   }
 
   async function resendDoctorKey(target) {
-    const toastId = toast.loading("Resending key...");
+    const toastId = toast.info("Resending key...", { autoClose: 3000 });
     try {
       await shareDoctorKey(target);
       toast.update(toastId, { render: "Key resent", type: "success", isLoading: false, autoClose: 3000 });
@@ -147,7 +147,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
     if (!institution) return toast.error("Choose an institution");
     if (!aesKey) return toast.error("AES key is not available in this browser. Re-upload or paste the key first.");
 
-    const toastId = toast.loading("Sharing institution keys...");
+    const toastId = toast.info("Sharing institution keys...", { autoClose: 3000 });
     try {
       const doctors = await getInstitutionDoctors(institution.institutionId);
       if (doctors.length === 0) throw new Error("This institution has no doctors to receive the encrypted key.");

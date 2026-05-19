@@ -8,22 +8,42 @@ exports.createRequest = async (req, res) => {
       return res.status(400).json({ message: "recordId and patientWallet are required" });
     }
 
+    const requesterWallet = req.authWallet.toLowerCase();
+    const existing = await prisma.accessRequest.findFirst({
+      where: {
+        recordId: Number(recordId),
+        patientWallet: patientWallet.toLowerCase(),
+        requesterWallet,
+        status: { in: ["pending", "approved"] },
+      },
+    });
+    if (existing) {
+      return res.status(409).json({
+        message:
+          existing.status === "approved"
+            ? "You already have approved access for this record"
+            : "You already have a pending request for this record",
+      });
+    }
+
     const request = await prisma.accessRequest.create({
       data: {
         recordId: Number(recordId),
         patientWallet: patientWallet.toLowerCase(),
-        requesterWallet: req.authWallet.toLowerCase(),
+        requesterWallet,
         requestType,
         institutionId: institutionId ? Number(institutionId) : null,
         reason,
       },
     });
 
+    const requesterLabel =
+      requestType === "emergency" ? "A doctor requested emergency access" : requestType === "institution" ? "An institution requested access" : "A doctor requested access";
     await createNotification(
       patientWallet.toLowerCase(),
-      "access_request",
-      "New access request",
-      `${requestType === "institution" ? "An institution" : "A doctor"} requested record #${recordId}.`
+      requestType === "emergency" ? "emergency_access_request" : "access_request",
+      requestType === "emergency" ? "Emergency access request" : "New access request",
+      `${requesterLabel} for record #${recordId}.${reason ? ` Reason: ${reason}` : ""}`
     );
     res.status(201).json(request);
   } catch (error) {

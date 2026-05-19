@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Bell, Check } from "lucide-react";
+import { Check, Inbox } from "lucide-react";
 import { useWallet } from "../context/WalletContext";
 import { createAuthHeaders } from "../utils/auth";
 
@@ -33,9 +33,6 @@ export default function NotificationsPanel() {
     <section className="panel">
       <div className="panel-title-row">
         <h2>Notifications</h2>
-        <button className="icon-button secondary" onClick={loadNotifications} aria-label="Refresh notifications">
-          <Bell size={16} />
-        </button>
       </div>
       <div className="request-list">
         {notifications.map((item) => (
@@ -54,8 +51,9 @@ export default function NotificationsPanel() {
         ))}
         {notifications.length === 0 && (
           <div className="empty-state">
-            <Bell size={28} />
+            <Inbox size={28} />
             <strong>No notifications</strong>
+            <span>Updates about access, notes, documents, and membership will appear here.</span>
           </div>
         )}
       </div>

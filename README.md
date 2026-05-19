@@ -4,6 +4,49 @@ HealthTrust is a prototype medical record sharing system for patients, doctors, 
 
 The project also includes a FastAPI diabetes prediction service. The prediction feature is not a diagnosis; it is a prototype decision-support feature trained from `diabetes_prediction_dataset.csv`.
 
+## Problem Statement
+
+Healthcare records in the Kurdistan region are often fragmented between hospitals, clinics, and individual doctors. Patients may need to carry paper reports, repeat laboratory tests, or manually send files between providers. Traditional centralized systems can improve storage, but they still depend on one organization controlling access, audit logs, and server security. If records are changed, deleted, or shared without clear permission history, patients and doctors may not have a trustworthy record of what happened.
+
+HealthTrust addresses this problem by giving patients a secure digital workspace where medical records are encrypted before upload, stored off-chain on IPFS, and referenced by blockchain permissions. The blockchain layer provides transparent access history, while doctors and institutions receive access only when the patient grants it.
+
+## Objectives
+
+- Build secure patient-controlled medical record sharing.
+- Store encrypted medical files off-chain using IPFS/Pinata instead of storing files on blockchain.
+- Store record CIDs, access permissions, institutions, and audit events on a Sepolia smart contract.
+- Support doctor and institution access workflows, including membership requests and revocation.
+- Provide a diabetes risk prediction prototype using a separate FastAPI ML service.
+- Document privacy limits clearly, including revocation limits and the non-diagnostic nature of ML output.
+
+## Scope
+
+Included in this prototype:
+
+- React frontend for patient, doctor, and institution admin roles.
+- Sepolia smart contract for CIDs, permissions, institutions, memberships, and audit events.
+- Client-side encryption before upload.
+- IPFS/Pinata encrypted file storage.
+- PostgreSQL/Prisma backend for profiles, metadata, encrypted key envelopes, notes, documents, requests, notifications, and prediction history.
+- Diabetes risk prediction prototype using `diabetes_prediction_dataset.csv`.
+
+Excluded from this prototype:
+
+- Production hospital deployment.
+- Clinical diagnosis or certified medical decision-making.
+- Real institution KYC/verification.
+- Legal compliance certification.
+- Formal smart contract/security audit.
+- Mainnet deployment and production recovery procedures.
+
+## Methodology
+
+1. Requirement analysis: identify patient, doctor, and institution workflows for secure medical record sharing.
+2. System design: separate sensitive file storage, blockchain permissions, backend workflow data, and ML prediction into focused components.
+3. Implementation: build the Solidity contract, Express API, Prisma schema, React dashboards, client-side encryption, IPFS upload, and FastAPI ML service.
+4. Testing: run backend auth tests, smart contract tests, frontend build checks, ML training checks, and manual browser workflow tests.
+5. Evaluation: review security limitations, usability test plans, role workflows, and prototype readiness for demonstration.
+
 ## Current Features
 
 | Role | Can do |
@@ -203,6 +246,22 @@ Fake test PDFs are available in `sample_records`:
 
 Use `sample_diabetes_vitals.pdf` to test doctor prediction auto-fill. Auto-fill works for readable text PDFs, not scanned image-only PDFs.
 
+## Screenshots For Graduation Report
+
+Create a `docs/screenshots` folder and place final screenshots with these filenames:
+
+| Screenshot | Suggested filename |
+| --- | --- |
+| Login/connect wallet screen | `docs/screenshots/01-login-register.png` |
+| Patient dashboard | `docs/screenshots/02-patient-dashboard.png` |
+| Patient upload/metadata controls | `docs/screenshots/03-patient-upload.png` |
+| Record access modal | `docs/screenshots/04-access-modal.png` |
+| Doctor accessible records | `docs/screenshots/05-doctor-records.png` |
+| Diabetes prediction result | `docs/screenshots/06-prediction-result.png` |
+| Institution dashboard | `docs/screenshots/07-institution-dashboard.png` |
+
+Use fake sample records and Sepolia test wallets only. Do not include private keys, real patient data, or real medical files in screenshots.
+
 ## Run Tests
 
 Automated checks:
@@ -257,6 +316,20 @@ Expected output shape:
 
 Testing evidence and manual test cases are stored in `test`.
 
+## Manual Test Results
+
+Manual browser tests require MetaMask, Sepolia transactions, IPFS upload, and multiple wallets. Record the final results in:
+
+```text
+test\system\system-test-cases.md
+```
+
+For final submission, each manual test case should be updated from `Manual` to `PASS` or `FAIL`, with date and short notes.
+
+## Final Submission TODO
+
+Use `TODO_GRADUATION.md` as the final checklist for screenshots, manual browser testing, evidence updates, demo preparation, and defense talking points.
+
 ## Manual Browser Test Flow
 
 Use at least three MetaMask accounts: one patient, one doctor, and one institution admin. Each account needs Sepolia ETH for transactions.
@@ -298,3 +371,20 @@ test/
 - Institution admins are self-registered; there is no real-world KYC.
 - The ML result is not a clinical diagnosis.
 - No formal security audit has been performed.
+
+## References
+
+- Ethereum documentation: https://ethereum.org/developers/docs/
+- Sepolia testnet: https://ethereum.org/developers/docs/networks/#sepolia
+- IPFS documentation: https://docs.ipfs.tech/
+- Pinata documentation: https://docs.pinata.cloud/
+- MetaMask developer documentation: https://docs.metamask.io/
+- FastAPI documentation: https://fastapi.tiangolo.com/
+- scikit-learn RandomForestClassifier: https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+- Diabetes prediction dataset: https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset
+
+## Conclusion And Future Work
+
+HealthTrust demonstrates a working prototype for patient-controlled medical record sharing. It combines client-side encryption, IPFS storage, Sepolia smart-contract permissions, role-based healthcare workflows, and diabetes risk prediction. The system shows how blockchain can be used for transparency and access history without storing private files on-chain.
+
+Future work includes verified institution onboarding, stronger wallet/key recovery, more disease prediction models, OCR for scanned PDFs, mobile support, formal security auditing, production compliance review, and deployment planning with real healthcare stakeholders.

@@ -32,10 +32,11 @@ export default function Register() {
 
   async function submit(event) {
     event.preventDefault();
-    let institutionId = form.institutionId ? Number(form.institutionId) : undefined;
+    const requestedInstitutionId = form.role === "doctor" && form.institutionId ? Number(form.institutionId) : undefined;
+    let institutionId = form.role === "doctor" ? undefined : form.institutionId ? Number(form.institutionId) : undefined;
 
     if (form.role === "institution_admin") {
-      const toastId = toast.loading("Registering institution on-chain...");
+      const toastId = toast.info("Registering institution on-chain...", { autoClose: 3000 });
       try {
         const tx = await registerInstitution(form.institutionName, form.institutionType);
         const receipt = await tx.wait();
@@ -72,6 +73,7 @@ export default function Register() {
       }
     }
 
+    const authHeaders = await createAuthHeaders(walletAddress);
     await axios.post(`${API_URL}/api/users/register`, {
       wallet: walletAddress,
       name: form.name,
@@ -84,8 +86,27 @@ export default function Register() {
       chronicConditions: form.chronicConditions,
       emergencyContact: form.emergencyContact,
     }, {
-      headers: await createAuthHeaders(walletAddress),
+      headers: authHeaders,
     });
+    if (form.role === "doctor" && requestedInstitutionId) {
+      try {
+        await axios.post(
+          `${API_URL}/api/membership-requests`,
+          {
+            institutionId: requestedInstitutionId,
+            message: `${form.name} requested institution membership during doctor registration.`,
+          },
+          { headers: authHeaders }
+        );
+        toast.success("Institution membership request sent");
+      } catch (error) {
+        if (error.response?.status === 409) {
+          toast.info(error.response.data.message);
+        } else {
+          toast.error(error.response?.data?.message || error.message || "Profile saved, but membership request failed");
+        }
+      }
+    }
     await fetchProfile(walletAddress);
     toast.success("Profile saved");
   }
