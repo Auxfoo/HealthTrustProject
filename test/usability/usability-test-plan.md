@@ -1,6 +1,6 @@
 # Usability Testing Plan
 
-Date: 2026-05-19
+Date: 2026-05-21
 
 ## Status
 
@@ -58,10 +58,15 @@ Each participant needs access to a MetaMask wallet on Sepolia. Use fake sample r
 | Patient grants institution access | Less than 3 minutes | Institution admin sees shared record | Pending |
 | Doctor views record and adds note | Less than 3 minutes | Patient can see note | Pending |
 | Doctor sends care document | Less than 3 minutes | Patient sees document and can download PDF | Pending |
+| Patient downloads branded care-document PDF | Less than 1 minute | PDF opens and user can identify title, doctor/patient metadata, and content | Pending |
+| Patient exports audit report PDF | Less than 1 minute | PDF opens and user can identify the audit timeline | Pending |
 | Doctor reviews Notes/Documents/Membership history | Less than 2 minutes | User can identify record, status/type, date, and message without confusion | Pending |
 | Doctor runs diabetes prediction | Less than 2 minutes | Prediction result appears and history updates | Pending |
+| Doctor submits institution membership request | Less than 2 minutes | User can identify available institutions and cannot choose the same pending/approved institution again | Pending |
+| Doctor requests emergency access | Less than 2 minutes | Dropdown is understandable and excludes already accessible records | Pending |
 | Institution admin approves doctor request | Less than 2 minutes | Doctor becomes institution member | Pending |
 | Institution admin reviews Shared records | Less than 2 minutes | User understands the doctor key count | Pending |
+| Institution admin exports audit report PDF | Less than 1 minute | PDF opens and user can identify operational summary and timeline | Pending |
 | Institution admin removes doctor | Less than 2 minutes | Doctor is removed and notified | Pending |
 
 ## What To Observe
@@ -76,6 +81,8 @@ Each participant needs access to a MetaMask wallet on Sepolia. Use fake sample r
 - Did the doctor histories for notes, documents, and membership make sense?
 - Did the admin understand Doctor Requests and doctor removal?
 - Did the admin understand the shared-record doctor key count?
+- Did participants understand the exported PDFs as reports, not replacements for original uploaded records?
+- Did the doctor understand why some emergency records or institutions are hidden from dropdowns?
 - Were success/error notifications visible without blocking important controls?
 
 ## SUS Questionnaire

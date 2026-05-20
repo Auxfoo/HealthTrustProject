@@ -1,6 +1,6 @@
 # Integration Testing Results
 
-Date: 2026-05-19
+Date: 2026-05-21
 
 Integration testing checks whether separate parts of HealthTrust work together correctly.
 
@@ -79,6 +79,9 @@ print(main.predict(payload))
 | Patient upload UI can represent each async step without relying only on auto-dismissed toast messages | Frontend build passed; browser confirmation required. |
 | Doctor notes/documents/membership histories use the current structured row components | Frontend build passed; browser confirmation required. |
 | Institution Shared tab can show doctor key counts | Frontend build passed; browser confirmation required. |
+| Branded PDF report utility is imported by patient and institution dashboards | Frontend build passed; browser confirmation required. |
+| Doctor membership requests are duplicate-safe in the UI/backend flow | Frontend build passed and backend routes are covered by app-level checks; browser confirmation required. |
+| Emergency record dropdown hides already accessible records | Frontend build passed; browser confirmation required. |
 
 ## Browser Integration Checks
 
@@ -115,6 +118,10 @@ Then test:
 | Doctor sends note/document | Patient sees note/document content. |
 | Doctor runs prediction | Result and history update. |
 | Doctor requests emergency access | Patient sees access request and can approve/reject access/key sharing. |
+| Doctor already has access to an emergency record | That record is hidden from the emergency request dropdown. |
+| Doctor selects an institution during registration | A membership request is created automatically. |
+| Doctor has pending or approved institution membership | That institution is not offered again for another request. |
+| Patient or institution exports audit PDF | Branded PDF opens with HealthTrust header, metadata, timeline/summary sections, and footer. |
 | Patient toggles Important/Emergency flags | Flag state updates and metadata saves in the background. |
 | Notifications tab | Unread notifications can be marked read. |
 

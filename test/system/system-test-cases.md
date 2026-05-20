@@ -1,6 +1,6 @@
 # System Testing
 
-Date: 2026-05-19
+Date: 2026-05-21
 
 System testing checks the full HealthTrust application from the user's point of view.
 
@@ -90,13 +90,19 @@ Fill this table after running the browser test flow with real MetaMask Sepolia t
 | TC15: Diabetes prediction | Doctor submits prediction form | Risk result, probability bar, contributing-values card, and history appear | To run | Pending |  |
 | TC16: Doctor note | Doctor chooses record and saves note | Patient sees note and doctor Notes History updates | To run | Pending |  |
 | TC17: Doctor care document | Doctor chooses record and sends document | Patient sees document content, can download PDF, and doctor Documents History updates | To run | Pending |  |
-| TC18: Doctor membership request | Doctor requests institution membership | Admin sees request in Doctor Requests and doctor Membership History updates | To run | Pending |  |
-| TC19: Emergency access request | Doctor requests access to emergency-visible record | Patient sees request and can approve/reject access/key sharing | To run | Pending |  |
-| TC20: Notifications | Doctor removed or prediction run for patient | Notification appears and can be marked read | To run | Pending |  |
-| TC21: Security model tabs | Patient, doctor, and admin open Security tab | Security Model content appears | To run | Pending |  |
-| TC22: Empty role tabs | Empty notes, docs, history, requests, shared records | UI shows clean empty-state messages | To run | Pending |  |
-| TC23: Invalid wallet input | Invalid wallet address | Error toast appears | To run | Pending |  |
-| TC24: Unsupported file or wrong key | Invalid encrypted record/key | Error toast appears and content is not shown | To run | Pending |  |
+| TC18: Branded care-document PDF | Patient downloads care document PDF | PDF opens with HealthTrust header, metadata cards, visual accents, and readable content | To run | Pending |  |
+| TC19: Patient audit PDF export | Patient exports audit report | PDF opens with HealthTrust header, metadata cards, and audit timeline | To run | Pending |  |
+| TC20: Institution audit PDF export | Institution admin exports audit report | PDF opens with operational summary, audit timeline, and security note | To run | Pending |  |
+| TC21: Doctor membership request | Doctor requests institution membership | Admin sees request in Doctor Requests and doctor Membership History updates | To run | Pending |  |
+| TC22: Automatic membership request | Doctor selects institution during registration | Membership request is created automatically | To run | Pending |  |
+| TC23: Duplicate membership prevention | Doctor has pending/approved request | Same institution is hidden from membership dropdown and duplicate request is blocked | To run | Pending |  |
+| TC24: Emergency access request | Doctor requests access to emergency-visible record | Patient sees request and can approve/reject access/key sharing | To run | Pending |  |
+| TC25: Emergency dropdown filtering | Doctor already has access to a record | Already accessible record does not appear in emergency request dropdown | To run | Pending |  |
+| TC26: Notifications | Doctor removed or prediction run for patient | Notification appears, auto-dismiss toast closes after a few seconds, and notification panel can mark read | To run | Pending |  |
+| TC27: Security model tabs | Patient, doctor, and admin open Security tab | Security Model content appears | To run | Pending |  |
+| TC28: Empty role tabs | Empty notes, docs, history, requests, shared records | UI shows clean empty-state messages | To run | Pending |  |
+| TC29: Invalid wallet input | Invalid wallet address | Error toast appears | To run | Pending |  |
+| TC30: Unsupported file or wrong key | Invalid encrypted record/key | Error toast appears and content is not shown | To run | Pending |  |
 
 ## Recommended Manual Test Order
 
@@ -113,12 +119,16 @@ Fill this table after running the browser test flow with real MetaMask Sepolia t
 11. Doctor adds note.
 12. Doctor sends care document.
 13. Patient confirms note and document.
-14. Patient grants institution access.
-15. Doctor requests membership.
-16. Admin approves membership.
-17. Patient shares keys if needed.
-18. Admin removes doctor.
-19. Doctor confirms removal notification.
+14. Patient downloads branded care-document PDF and exports patient audit PDF.
+15. Patient grants institution access.
+16. Doctor requests membership, or registers with an institution selected to create the automatic request.
+17. Confirm duplicate institution requests are hidden/blocked.
+18. Admin approves membership.
+19. Institution admin exports branded institution audit PDF.
+20. Patient shares keys if needed.
+21. Doctor checks emergency dropdown filtering.
+22. Admin removes doctor.
+23. Doctor confirms removal notification.
 
 ## Screenshot Evidence Checklist
 
@@ -133,7 +143,8 @@ Fill this table after running the browser test flow with real MetaMask Sepolia t
 | Institution dashboard | `docs/screenshots/07-institution-dashboard.png` | To capture |
 | Notifications | `docs/screenshots/08-notifications.png` | Optional |
 | Security model | `docs/screenshots/09-security-model.png` | Optional |
+| Exported PDF report | `docs/screenshots/10-exported-pdf-report.png` | Optional |
 
 ## Result Summary
 
-Automated terminal checks passed on 2026-05-19. Manual browser execution is still required for MetaMask, IPFS upload, Sepolia transaction confirmation, and real multi-wallet role workflows.
+Automated terminal checks passed on 2026-05-21. Manual browser execution is still required for MetaMask, IPFS upload, Sepolia transaction confirmation, PDF export visual confirmation, and real multi-wallet role workflows.

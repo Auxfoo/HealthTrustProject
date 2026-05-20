@@ -51,9 +51,9 @@ Excluded from this prototype:
 
 | Role | Can do |
 | --- | --- |
-| Patient | Register profile, upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, view doctor notes, view care documents, download care documents as PDFs, see notifications, view audit history, and review the security model. |
-| Doctor | Register profile and MetaMask encryption public key, view only accessible records with matching key envelopes, decrypt/download records, request emergency access to emergency-visible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
-| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared-key counts, review analytics/audit history, see notifications, and review the security model. |
+| Patient | Register profile, upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, approve/reject access requests, view doctor notes, view care documents, download branded care-document PDFs, export branded audit-report PDFs, see notifications, view audit history, and review the security model. |
+| Doctor | Register profile and MetaMask encryption public key, optionally choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
+| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared-key counts, review analytics/audit history, export branded institution audit-report PDFs, see notifications, and review the security model. |
 
 ## Architecture
 
@@ -263,6 +263,7 @@ Create a `docs/screenshots` folder and place final screenshots with these filena
 | Institution dashboard with doctors, shared records, shared-key count, and Doctor Requests | `docs/screenshots/07-institution-dashboard.png` |
 | Optional: notifications tab with mark-read action | `docs/screenshots/08-notifications.png` |
 | Optional: security model tab | `docs/screenshots/09-security-model.png` |
+| Optional: exported PDF report opened in a PDF viewer | `docs/screenshots/10-exported-pdf-report.png` |
 
 Use fake sample records and Sepolia test wallets only. Do not include private keys, real patient data, or real medical files in screenshots.
 
@@ -278,6 +279,8 @@ Suggested report mapping:
 ## Run Tests
 
 Automated checks:
+
+Latest automated check date: 2026-05-21.
 
 ```powershell
 cd backend
@@ -327,6 +330,16 @@ Expected output shape:
 {'prediction': 0, 'probability': 0.08}
 ```
 
+Latest local automated results:
+
+| Check | Result |
+| --- | --- |
+| Backend tests | PASS, 4 passed |
+| Blockchain tests | PASS, 3 passing |
+| Frontend production build | PASS |
+| ML training | PASS, accuracy 0.9689 |
+| ML prediction smoke test | PASS, prediction 0, probability 0.08 |
+
 Testing evidence and manual test cases are stored in `test`.
 
 ## Manual Test Results
@@ -338,6 +351,16 @@ test\system\system-test-cases.md
 ```
 
 For final submission, each manual test case should be updated from `Manual` to `PASS` or `FAIL`, with date and short notes.
+
+## Report Exports
+
+HealthTrust generates polished PDF reports for demo evidence:
+
+- Patient care-document PDFs include the HealthTrust header, visual accent bands, metadata cards, clinical content, and storage reference sections.
+- Patient audit PDFs summarize the patient's access and workflow timeline.
+- Institution audit PDFs summarize membership, shared-record activity, operational counts, and security notes.
+
+Original uploaded medical PDFs/images are downloaded unchanged after decryption, because those are the actual medical files uploaded by the patient.
 
 ## Local Demo Reset
 
@@ -386,9 +409,12 @@ Use at least three MetaMask accounts: one patient, one doctor, and one instituti
 10. Patient uses Share keys if a newly added institution doctor needs a key envelope.
 11. Doctor adds a note and sends a care document linked to the record.
 12. Patient confirms Notes and Documents tabs show content.
-13. Doctor views `sample_diabetes_vitals.pdf`; prediction fields should auto-fill.
-14. Doctor submits prediction and confirms History is updated.
-15. Admin removes the doctor and doctor receives a notification.
+13. Patient downloads the branded care-document PDF.
+14. Patient exports a branded audit-report PDF.
+15. Doctor views `sample_diabetes_vitals.pdf`; prediction fields should auto-fill.
+16. Doctor submits prediction and confirms History is updated.
+17. Doctor checks the emergency request dropdown and confirms already accessible records are hidden.
+18. Admin removes the doctor and doctor receives a notification.
 
 ## Test Evidence Folder
 

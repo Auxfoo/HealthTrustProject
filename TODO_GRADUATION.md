@@ -2,6 +2,18 @@
 
 Use this checklist before final submission and demo.
 
+## Readiness Status
+
+Automated checks passed on 2026-05-21:
+
+- Backend tests: PASS.
+- Blockchain tests: PASS.
+- Frontend production build: PASS.
+- ML training: PASS, accuracy 0.9689.
+- ML prediction smoke test: PASS, output `{'prediction': 0, 'probability': 0.08}`.
+
+Not final-submission ready until the screenshot files are captured and `test/system/system-test-cases.md` is filled with real PASS/FAIL browser results from MetaMask/Sepolia/IPFS testing.
+
 ## 1. Screenshots
 
 Save screenshots in `docs/screenshots`.
@@ -15,6 +27,7 @@ Save screenshots in `docs/screenshots`.
 - [ ] `07-institution-dashboard.png` - institution dashboard with doctors, Doctor Requests, Shared records, and doctor key count.
 - [ ] `08-notifications.png` - notifications tab with mark-read action.
 - [ ] `09-security-model.png` - Security Model tab.
+- [ ] `10-exported-pdf-report.png` - branded HealthTrust PDF report opened in a PDF viewer.
 
 Optional screenshots:
 
@@ -51,8 +64,14 @@ Update `test/system/system-test-cases.md` after running these.
 - [ ] Patient can see doctor note.
 - [ ] Doctor can send care document.
 - [ ] Patient can see care document and download PDF.
+- [ ] Patient care-document PDF has HealthTrust branding, metadata cards, visual accents, and readable content.
+- [ ] Patient can export branded audit PDF.
+- [ ] Institution admin can export branded institution audit PDF.
 - [ ] Doctor can run diabetes prediction.
 - [ ] Prediction history updates.
+- [ ] Doctor registration with selected institution creates an automatic membership request.
+- [ ] Doctor cannot request the same institution twice while pending or already approved.
+- [ ] Doctor emergency dropdown hides records that are already accessible.
 - [ ] Empty tabs show clean empty-state messages.
 - [ ] Doctor notes, documents, and membership histories are visible.
 - [ ] Notifications tab works for patient, doctor, and admin.
@@ -84,6 +103,7 @@ Update `test/system/system-test-cases.md` after running these.
 - [ ] Prepare one doctor access grant before demo, or practice doing it live.
 - [ ] Prepare one prediction example using `sample_diabetes_vitals.pdf`.
 - [ ] Prepare one short fake diabetes prescription/care document for the doctor document demo.
+- [ ] Download one care-document PDF and one audit PDF before demo to confirm the browser can open them.
 
 ## 5. Documentation Cleanup
 

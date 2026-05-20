@@ -12,9 +12,9 @@ The current role workflows are:
 
 | Role | Main workflows |
 | --- | --- |
-| Patient | Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes, view care documents, download care-document PDFs, view notifications, view audit history, and review the security model. |
-| Doctor | Register encryption public key, view accessible records, decrypt records through MetaMask key envelopes, request emergency access to emergency-visible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
-| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, review analytics/audit history, view notifications, and review the security model. |
+| Patient | Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes, view care documents, download branded care-document PDFs, export branded audit-report PDFs, view notifications, view audit history, and review the security model. |
+| Doctor | Register encryption public key, optionally create an automatic institution membership request during signup, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
+| Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, review analytics/audit history, export branded audit-report PDFs, view notifications, and review the security model. |
 
 The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
 
@@ -134,6 +134,8 @@ Doctor prediction flow: the doctor enters diabetes inputs manually or auto-fills
 
 Emergency access flow: a patient can mark a record as emergency-visible. A doctor can request emergency access for that record. The patient still controls final approval, on-chain access, and encrypted key sharing.
 
+PDF report flow: patient care documents, patient audit reports, and institution audit reports can be exported as branded HealthTrust PDFs with a header, visual accents, metadata cards, timeline/content sections, and footer notes. Original uploaded medical PDFs/images are downloaded unchanged after decryption.
+
 ## 4. Blockchain and Smart Contract
 
 The smart contract is the trust layer. It does not store private medical files. It stores record CIDs, record ownership, doctor permissions, institution permissions, institution registration, doctor membership, and audit events.
@@ -202,7 +204,7 @@ Expected features:
 
 `train.py` trains a `RandomForestClassifier` pipeline with one-hot encoding for categorical fields and saves `model.pkl`. `main.py` loads `model.pkl` and exposes `/predict`.
 
-Latest local training result:
+Latest local training result, verified on 2026-05-21:
 
 ```text
 Accuracy: 0.9689
@@ -268,6 +270,7 @@ Main frontend files:
 | `PredictionForm.js` | Diabetes prediction form. |
 | `NotificationsPanel.js` | Notification list and mark-read action. |
 | `RecordCard.js` | Shared record display component. |
+| `frontend/src/utils/pdfReport.js` | Branded HealthTrust PDF report generator for care documents and audit exports. |
 
 The UI includes empty states for tabs/lists with no records, notes, documents, requests, notifications, history, or shared records. It also includes Important/Emergency flags, upload status, doctor note/document/membership histories, and shared-key counts for institution records.
 
@@ -312,6 +315,7 @@ npm test
 Latest result:
 
 ```text
+2026-05-21
 4 passed, 0 failed
 ```
 
@@ -325,6 +329,7 @@ npm test
 Latest result:
 
 ```text
+2026-05-21
 3 passing
 ```
 
@@ -370,6 +375,8 @@ Expected output shape:
 {'prediction': 0, 'probability': 0.08}
 ```
 
+Latest local prediction smoke test on 2026-05-21 returned `{'prediction': 0, 'probability': 0.08}`.
+
 ### 12.2 Integration Testing
 
 Integration evidence is stored in:
@@ -378,7 +385,7 @@ Integration evidence is stored in:
 test\integration\integration-test-results.md
 ```
 
-The automated integration checks cover backend auth, smart contract permission logic, frontend build/import compatibility, ML training, and ML prediction logic.
+The automated integration checks cover backend auth, smart contract permission logic, frontend build/import compatibility, branded PDF report imports, ML training, and ML prediction logic.
 
 Browser integration tests require running the full app with MetaMask:
 
@@ -406,7 +413,7 @@ System test cases are stored in:
 test\system\system-test-cases.md
 ```
 
-The main manual workflows are patient upload, patient grant, doctor decrypt, doctor note, doctor care document, institution grant, membership approval/removal, notifications, and prediction auto-fill.
+The main manual workflows are patient upload, patient grant, doctor decrypt, doctor note, doctor care document, branded PDF export, institution grant, duplicate-safe membership approval/removal, emergency dropdown filtering, notifications, and prediction auto-fill.
 
 ### 12.4 Usability Testing
 
@@ -486,6 +493,7 @@ Recommended screenshot list:
 | Institution dashboard with Doctor Requests and Shared records | `docs/screenshots/07-institution-dashboard.png` | To capture |
 | Notifications tab | `docs/screenshots/08-notifications.png` | Optional |
 | Security model tab | `docs/screenshots/09-security-model.png` | Optional |
+| Exported PDF report opened in a PDF viewer | `docs/screenshots/10-exported-pdf-report.png` | Optional |
 
 These screenshots can be inserted into the final written report after the implementation chapter or in a results/demo chapter.
 
@@ -525,7 +533,7 @@ Future improvements include:
 - Stronger key recovery and wallet recovery mechanisms.
 - More disease prediction models beyond diabetes.
 - OCR support for scanned medical PDFs.
-- Better audit visualizations and exportable audit reports.
+- More advanced audit visualizations, filtering, and signed/verified report exports.
 - Mobile app support for patients and doctors.
 - Formal smart contract audit and penetration testing.
 - Production deployment study with healthcare privacy and legal compliance review.
@@ -547,6 +555,7 @@ Future improvements include:
 | `frontend/src/utils/encryption.js` | AES file encryption/decryption helpers. |
 | `frontend/src/utils/keySharing.js` | MetaMask encryption key envelope helpers. |
 | `frontend/src/utils/recordSharing.js` | Stores doctor/institution key envelopes. |
+| `frontend/src/utils/pdfReport.js` | Creates branded PDF reports for care documents and audit exports. |
 | `ml_service/train.py` | Trains model and writes `model.pkl`. |
 | `ml_service/main.py` | FastAPI prediction service. |
 | `sample_records/` | Fake PDFs for testing. |

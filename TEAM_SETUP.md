@@ -193,7 +193,7 @@ print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
 ```
 
-Latest known result:
+Latest known result, verified on 2026-05-21:
 
 ```text
 {'prediction': 0, 'probability': 0.08}
@@ -205,6 +205,7 @@ Use separate MetaMask accounts for patient, doctor, and institution admin.
 
 1. Institution admin registers and creates an institution.
 2. Doctor registers and registers the MetaMask encryption public key.
+   - If the doctor chooses an institution during signup, confirm an automatic membership request is created.
 3. Patient registers and uploads a sample PDF from `sample_records`.
 4. Confirm the patient upload status shows encryption, IPFS upload, MetaMask transaction, metadata save, and success/error.
 5. Patient grants the doctor access from the record list using the Manage Access modal.
@@ -213,14 +214,18 @@ Use separate MetaMask accounts for patient, doctor, and institution admin.
 8. Patient grants institution access from the same record.
 9. Institution admin checks Shared records and the doctor key count.
 10. Doctor requests membership in the institution.
-11. Admin approves the doctor from Doctor Requests.
-12. Patient uses Share keys if a newly added institution doctor needs access to an already shared record.
-13. Doctor adds a note and sends a care document.
-14. Patient checks Notes and Documents.
-15. Doctor views `sample_diabetes_vitals.pdf` and confirms prediction auto-fill.
-16. Doctor runs prediction and checks History.
-17. Admin removes doctor and doctor checks Notifications.
-18. Check Important/Emergency flags, Notifications, and the Security Model tab.
+11. Confirm the same institution does not appear again in the doctor's membership dropdown while a request is pending or approved.
+12. Admin approves the doctor from Doctor Requests.
+13. Patient uses Share keys if a newly added institution doctor needs access to an already shared record.
+14. Doctor adds a note and sends a care document.
+15. Patient checks Notes and Documents and downloads the branded care-document PDF.
+16. Patient exports a branded audit-report PDF.
+17. Institution admin exports a branded institution audit-report PDF.
+18. Doctor views `sample_diabetes_vitals.pdf` and confirms prediction auto-fill.
+19. Doctor checks the Emergency dropdown and confirms records already accessible to the doctor are hidden.
+20. Doctor runs prediction and checks History.
+21. Admin removes doctor and doctor checks Notifications.
+22. Check Important/Emergency flags, Notifications, and the Security Model tab.
 
 ## 10. Test Evidence Files
 
@@ -249,6 +254,7 @@ Before final submission, collect the following evidence:
 | Institution dashboard screenshot | `docs\screenshots\07-institution-dashboard.png` | To capture |
 | Notifications screenshot         | `docs\screenshots\08-notifications.png`         | Optional   |
 | Security model screenshot        | `docs\screenshots\09-security-model.png`        | Optional   |
+| Exported PDF report screenshot   | `docs\screenshots\10-exported-pdf-report.png`   | Optional   |
 | Manual system test results       | `test\system\system-test-cases.md`              | To execute |
 | Usability participant notes      | `test\usability\usability-test-plan.md`         | To execute |
 
@@ -256,9 +262,9 @@ Use fake sample records only. Do not capture private keys, real medical data, or
 
 ## Current Prototype Features
 
-- Patient: encrypted upload with persistent status indicator, record metadata, archive, important flag, emergency-visible flag, grant/revoke doctor access, grant/revoke institution access, resend/share keys, access request approval, doctor notes, care documents with PDF export, notifications, audit trail, and Security Model tab.
-- Doctor: accessible records, MetaMask AES key decryption, emergency access request flow, PDF prediction auto-fill, prediction result/risk meter, notes/documents/membership histories, care documents, prediction history, membership request, notifications, and Security Model tab.
-- Institution admin: institution registration, doctor membership approvals, manual doctor management, shared-record overview, key-count visibility, analytics, audit timeline, notifications, and Security Model tab.
+- Patient: encrypted upload with persistent status indicator, record metadata, archive, important flag, emergency-visible flag, grant/revoke doctor access, grant/revoke institution access, resend/share keys, access request approval, doctor notes, care documents with branded PDF export, branded audit PDF export, notifications, audit trail, and Security Model tab.
+- Doctor: accessible records, MetaMask AES key decryption, emergency access request dropdown that hides already accessible records, PDF prediction auto-fill, prediction result/risk meter, notes/documents/membership histories, care documents, prediction history, duplicate-safe membership requests, automatic membership request from registration when an institution is selected, notifications, and Security Model tab.
+- Institution admin: institution registration, doctor membership approvals, manual doctor management, shared-record overview, key-count visibility, analytics, audit timeline, branded institution audit PDF export, notifications, and Security Model tab.
 
 Remember: Sepolia is a testnet. Revocation stops future authorized access but cannot erase copies that were already downloaded or decrypted.
 

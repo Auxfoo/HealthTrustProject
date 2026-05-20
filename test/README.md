@@ -59,7 +59,7 @@ print(main.predict(payload))
 
 ## Latest Automated Result
 
-Date: 2026-05-19
+Date: 2026-05-21
 
 | Test area | Latest result |
 | --- | --- |
@@ -81,8 +81,14 @@ Some workflows cannot be completed by terminal commands because they require bro
 - Patient Important/Emergency flags and emergency access request flow
 - Institution membership approval/removal
 - Notifications in the browser
+- Auto-dismiss toast behavior
 - Doctor notes/documents/membership history layout
 - Institution shared-key count visibility
+- Branded patient care-document PDF export
+- Branded patient and institution audit PDF export
+- Automatic doctor membership request during registration
+- Duplicate-safe institution membership dropdown/request blocking
+- Emergency request dropdown filtering for already accessible records
 - Security Model tab in each role dashboard
 - Usability testing with real participants
 
