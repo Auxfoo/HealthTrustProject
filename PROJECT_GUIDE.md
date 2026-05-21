@@ -13,7 +13,7 @@ The current role workflows are:
 | Role | Main workflows |
 | --- | --- |
 | Patient | Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes, view care documents, download branded care-document PDFs, export branded audit-report PDFs, view notifications, view audit history, and review the security model. |
-| Doctor | Register encryption public key, optionally create an automatic institution membership request during signup, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
+| Doctor | Register encryption public key, create an automatic institution membership request during signup when an institution is selected, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
 | Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, review analytics/audit history, export branded audit-report PDFs, view notifications, and review the security model. |
 
 The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
@@ -237,8 +237,8 @@ This result is not a diagnosis and should not replace medical judgment.
 | `PATCH` | `/api/membership-requests/:id` | Approve or reject doctor membership. |
 | `GET` | `/api/institutions` | Return registered institutions. |
 | `POST` | `/api/institutions/register` | Save institution metadata. |
-| `POST` | `/api/institutions/addDoctor` | Optional backend-proxy route for adding a doctor on-chain. MetaMask UI writes are preferred. |
-| `POST` | `/api/institutions/removeDoctor` | Optional backend-proxy route for removing a doctor on-chain. MetaMask UI writes are preferred. |
+| `POST` | `/api/institutions/addDoctor` | Backend-proxy route for adding a doctor on-chain. MetaMask UI writes are preferred. |
+| `POST` | `/api/institutions/removeDoctor` | Backend-proxy route for removing a doctor on-chain. MetaMask UI writes are preferred. |
 | `GET` | `/api/institutions/:id/doctors` | Return doctors in institution. |
 | `POST` | `/api/institutions/:id/doctors/:doctorWallet/link` | Link approved doctor profile to an institution in PostgreSQL. |
 | `DELETE` | `/api/institutions/:id/doctors/:doctorWallet/link` | Unlink removed doctor profile from an institution in PostgreSQL. |
@@ -247,10 +247,10 @@ This result is not a diagnosis and should not replace medical judgment.
 | `GET` | `/api/notifications` | Fetch signed wallet notifications. |
 | `POST` | `/api/notifications` | Create a notification, such as doctor removal. |
 | `PATCH` | `/api/notifications/:id/read` | Mark notification as read. |
-| `POST` | `/api/access/grant/doctor` | Optional backend-proxy grant doctor route. MetaMask UI writes are preferred. |
-| `POST` | `/api/access/revoke/doctor` | Optional backend-proxy revoke doctor route. MetaMask UI writes are preferred. |
-| `POST` | `/api/access/grant/institution` | Optional backend-proxy grant institution route. MetaMask UI writes are preferred. |
-| `POST` | `/api/access/revoke/institution` | Optional backend-proxy revoke institution route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/grant/doctor` | Backend-proxy grant doctor route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/revoke/doctor` | Backend-proxy revoke doctor route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/grant/institution` | Backend-proxy grant institution route. MetaMask UI writes are preferred. |
+| `POST` | `/api/access/revoke/institution` | Backend-proxy revoke institution route. MetaMask UI writes are preferred. |
 | `GET` | `/api/access/check` | Check whether a doctor has access to a record. |
 | `GET/POST/PATCH` | `/api/access-requests` | Access request workflow, including emergency access requests. Normal patient-initiated grants still happen from the Manage Access modal. |
 
@@ -478,22 +478,21 @@ Fake test PDFs are available in `sample_records`:
 
 ## 15. Screenshots For Graduation Report
 
-Screenshots should be captured from the running local app using fake sample records and Sepolia test wallets. Do not include real patient information or private keys.
+Screenshots were captured from the running local app using fake sample records and Sepolia test wallets. They do not include real patient information or private keys.
 
-Recommended screenshot list:
+Available screenshot evidence:
 
-| Screenshot | Filename | Status |
-| --- | --- | --- |
-| Login/register or wallet connection | `docs/screenshots/01-login-register.png` | To capture |
-| Patient dashboard | `docs/screenshots/02-patient-dashboard.png` | To capture |
-| Patient upload/metadata controls with upload status and uploaded record list | `docs/screenshots/03-patient-upload.png` | To capture |
-| Access grant/revoke modal showing doctor and institution controls | `docs/screenshots/04-access-modal.png` | To capture |
-| Doctor accessible records with View action, prediction form, and notes/documents history | `docs/screenshots/05-doctor-records.png` | To capture |
-| Diabetes prediction result | `docs/screenshots/06-prediction-result.png` | To capture |
-| Institution dashboard with Doctor Requests and Shared records | `docs/screenshots/07-institution-dashboard.png` | To capture |
-| Notifications tab | `docs/screenshots/08-notifications.png` | Optional |
-| Security model tab | `docs/screenshots/09-security-model.png` | Optional |
-| Exported PDF report opened in a PDF viewer | `docs/screenshots/10-exported-pdf-report.png` | Optional |
+| Screenshot | Filename |
+| --- | --- |
+| Login/register or wallet connection | `docs/screenshots/01-login-register.png` |
+| Patient dashboard | `docs/screenshots/02-patient-dashboard.png` |
+| Patient upload/metadata controls with upload status and uploaded record list | `docs/screenshots/03-patient-upload.png` |
+| Access grant/revoke modal showing doctor and institution controls | `docs/screenshots/04-access-modal.png` |
+| Doctor accessible records with View action, prediction form, and notes/documents history | `docs/screenshots/05-doctor-records.png` |
+| Diabetes prediction result | `docs/screenshots/06-prediction-result.png` |
+| Institution dashboard with Doctor Requests and Shared records | `docs/screenshots/07-institution-dashboard.png` |
+| Notifications tab | `docs/screenshots/08-notifications.png` |
+| Security model tab | `docs/screenshots/09-security-model.png` |
 
 These screenshots can be inserted into the final written report after the implementation chapter or in a results/demo chapter.
 

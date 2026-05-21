@@ -120,7 +120,7 @@ Then test:
 | Doctor requests emergency access | Patient sees access request and can approve/reject access/key sharing. |
 | Doctor already has access to an emergency record | That record is hidden from the emergency request dropdown. |
 | Doctor selects an institution during registration | A membership request is created automatically. |
-| Doctor has pending or approved institution membership | That institution is not offered again for another request. |
+| Doctor has an existing requested or approved institution membership | That institution is not offered again for another request. |
 | Patient or institution exports audit PDF | Branded PDF opens with HealthTrust header, metadata, timeline/summary sections, and footer. |
 | Patient toggles Important/Emergency flags | Flag state updates and metadata saves in the background. |
 | Notifications tab | Unread notifications can be marked read. |

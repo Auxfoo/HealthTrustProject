@@ -214,7 +214,7 @@ Use separate MetaMask accounts for patient, doctor, and institution admin.
 8. Patient grants institution access from the same record.
 9. Institution admin checks Shared records and the doctor key count.
 10. Doctor requests membership in the institution.
-11. Confirm the same institution does not appear again in the doctor's membership dropdown while a request is pending or approved.
+11. Confirm the same institution does not appear again in the doctor's membership dropdown while a request already exists or has been approved.
 12. Admin approves the doctor from Doctor Requests.
 13. Patient uses Share keys if a newly added institution doctor needs access to an already shared record.
 14. Doctor adds a note and sends a care document.
@@ -239,24 +239,21 @@ test\system\system-test-cases.md
 test\usability\usability-test-plan.md
 ```
 
-## 11. Graduation Evidence Checklist
-
-Before final submission, collect the following evidence:
+## 11. Graduation Evidence
 
 | Evidence                         | Location                                        | Status     |
 | -------------------------------- | ----------------------------------------------- | ---------- |
-| Login/register screenshot        | `docs\screenshots\01-login-register.png`        | To capture |
-| Patient dashboard screenshot     | `docs\screenshots\02-patient-dashboard.png`     | To capture |
-| Patient upload/status screenshot | `docs\screenshots\03-patient-upload.png`        | To capture |
-| Access grant/revoke modal        | `docs\screenshots\04-access-modal.png`          | To capture |
-| Doctor records/history screenshot | `docs\screenshots\05-doctor-records.png`       | To capture |
-| Prediction result screenshot     | `docs\screenshots\06-prediction-result.png`     | To capture |
-| Institution dashboard screenshot | `docs\screenshots\07-institution-dashboard.png` | To capture |
-| Notifications screenshot         | `docs\screenshots\08-notifications.png`         | Optional   |
-| Security model screenshot        | `docs\screenshots\09-security-model.png`        | Optional   |
-| Exported PDF report screenshot   | `docs\screenshots\10-exported-pdf-report.png`   | Optional   |
-| Manual system test results       | `test\system\system-test-cases.md`              | To execute |
-| Usability participant notes      | `test\usability\usability-test-plan.md`         | To execute |
+| Login/register screenshot        | `docs\screenshots\01-login-register.png`        | Available |
+| Patient dashboard screenshot     | `docs\screenshots\02-patient-dashboard.png`     | Available |
+| Patient upload/status screenshot | `docs\screenshots\03-patient-upload.png`        | Available |
+| Access grant/revoke modal        | `docs\screenshots\04-access-modal.png`          | Available |
+| Doctor records/history screenshot | `docs\screenshots\05-doctor-records.png`       | Available |
+| Prediction result screenshot     | `docs\screenshots\06-prediction-result.png`     | Available |
+| Institution dashboard screenshot | `docs\screenshots\07-institution-dashboard.png` | Available |
+| Notifications screenshot         | `docs\screenshots\08-notifications.png`         | Available |
+| Security model screenshot        | `docs\screenshots\09-security-model.png`        | Available |
+| System test cases                | `test\system\system-test-cases.md`              | Documented |
+| Usability testing plan           | `test\usability\usability-test-plan.md`         | Documented |
 
 Use fake sample records only. Do not capture private keys, real medical data, or secret environment values.
 

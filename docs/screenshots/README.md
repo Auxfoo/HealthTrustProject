@@ -1,6 +1,6 @@
 # Screenshot Evidence
 
-Place final graduation-project screenshots in this folder.
+This folder contains graduation-project screenshot evidence.
 
 Use these filenames:
 
@@ -15,7 +15,6 @@ Use these filenames:
 | Institution dashboard with Doctor Requests, Shared records, and key count | `07-institution-dashboard.png` |
 | Notifications tab with mark-read action | `08-notifications.png` |
 | Security Model tab | `09-security-model.png` |
-| Exported branded PDF report opened in a PDF viewer | `10-exported-pdf-report.png` |
 
 Suggested report figure mapping:
 
@@ -25,7 +24,6 @@ Suggested report figure mapping:
 | Figure 4.2: Doctor Dashboard and Authorized Records Screen | `05-doctor-records.png`, `06-prediction-result.png` |
 | Figure 4.3: Institution Dashboard and Membership Management | `07-institution-dashboard.png` |
 | Figure 4.4: Access Grant and Revoke Flow | `04-access-modal.png` plus a record list state before/after revoke |
-| Figure 4.5: Exported Report Evidence | `10-exported-pdf-report.png` showing a care document, patient audit report, or institution audit report |
 
 Rules:
 
@@ -34,4 +32,3 @@ Rules:
 - Do not show private keys, seed phrases, real patient data, or secret environment values.
 - Crop screenshots only enough to remove browser clutter; keep the page content visible.
 - Keep the visible UI state meaningful: show upload status, key-envelope counts, histories, notifications, and section headers where possible.
-- For the PDF screenshot, open the downloaded report in a PDF viewer and show the HealthTrust header, metadata cards, and at least one content/timeline section.

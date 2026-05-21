@@ -52,7 +52,7 @@ Excluded from this prototype:
 | Role | Can do |
 | --- | --- |
 | Patient | Register profile, upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, approve/reject access requests, view doctor notes, view care documents, download branded care-document PDFs, export branded audit-report PDFs, see notifications, view audit history, and review the security model. |
-| Doctor | Register profile and MetaMask encryption public key, optionally choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
+| Doctor | Register profile and MetaMask encryption public key, choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
 | Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared-key counts, review analytics/audit history, export branded institution audit-report PDFs, see notifications, and review the security model. |
 
 ## Architecture
@@ -66,7 +66,7 @@ Node/Express Backend
   | Prisma -> PostgreSQL
   | Pinata -> IPFS encrypted file storage
   | axios  -> FastAPI ML service
-  | ethers -> optional contract read/proxy routes
+  | ethers -> contract read/proxy routes
   v
 Sepolia Smart Contract
   | record CIDs, permissions, institutions, doctor membership, audit events
@@ -250,9 +250,9 @@ Use `sample_diabetes_vitals.pdf` to test doctor prediction auto-fill. Auto-fill 
 
 ## Screenshots For Graduation Report
 
-Create a `docs/screenshots` folder and place final screenshots with these filenames:
+Final screenshot evidence is stored in `docs/screenshots` with these filenames:
 
-| Screenshot | Suggested filename |
+| Screenshot | Filename |
 | --- | --- |
 | Login/connect wallet screen | `docs/screenshots/01-login-register.png` |
 | Patient dashboard | `docs/screenshots/02-patient-dashboard.png` |
@@ -261,9 +261,8 @@ Create a `docs/screenshots` folder and place final screenshots with these filena
 | Doctor dashboard with accessible records, preview/view action, prediction form, and notes/documents history | `docs/screenshots/05-doctor-records.png` |
 | Diabetes prediction result with probability bar and contributing values | `docs/screenshots/06-prediction-result.png` |
 | Institution dashboard with doctors, shared records, shared-key count, and Doctor Requests | `docs/screenshots/07-institution-dashboard.png` |
-| Optional: notifications tab with mark-read action | `docs/screenshots/08-notifications.png` |
-| Optional: security model tab | `docs/screenshots/09-security-model.png` |
-| Optional: exported PDF report opened in a PDF viewer | `docs/screenshots/10-exported-pdf-report.png` |
+| Notifications tab with mark-read action | `docs/screenshots/08-notifications.png` |
+| Security model tab | `docs/screenshots/09-security-model.png` |
 
 Use fake sample records and Sepolia test wallets only. Do not include private keys, real patient data, or real medical files in screenshots.
 
@@ -388,10 +387,6 @@ If only the local registered profiles should be cleared:
 cd backend
 "DELETE FROM users;" | npx prisma db execute --schema .\prisma\schema.prisma --stdin
 ```
-
-## Final Submission TODO
-
-Use `TODO_GRADUATION.md` as the final checklist for screenshots, manual browser testing, evidence updates, demo preparation, and defense talking points.
 
 ## Manual Browser Test Flow
 
