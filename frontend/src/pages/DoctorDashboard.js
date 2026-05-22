@@ -37,11 +37,11 @@ const emptyPredictionValues = {
 };
 
 const predictionFields = [
-  { key: "gender", labels: ["Gender"] },
+  { key: "gender", labels: ["Gender"], optional: true },
   { key: "age", labels: ["Age"] },
   { key: "hypertension", labels: ["Hypertension"] },
   { key: "heart_disease", labels: ["Heart disease", "Heart Disease"] },
-  { key: "smoking_history", labels: ["Smoking history", "Smoking History"] },
+  { key: "smoking_history", labels: ["Smoking history", "Smoking History"], optional: true },
   { key: "bmi", labels: ["BMI"] },
   { key: "HbA1c_level", labels: ["HbA1c level", "HbA1c"] },
   { key: "blood_glucose_level", labels: ["Blood glucose level", "Blood Glucose"] },
@@ -88,7 +88,7 @@ function extractReadablePdfText(text) {
 function extractPredictionValues(bytes) {
   const rawText = new TextDecoder("latin1").decode(bytes);
   const text = extractReadablePdfText(rawText);
-  const extracted = {};
+  const extracted = { ...emptyPredictionValues };
   predictionFields.forEach(({ key, labels }) => {
     for (const label of labels) {
       const pattern = new RegExp(`${label}\\s*[:=]\\s*([^\\n\\r,;]+)`, "i");
@@ -99,7 +99,7 @@ function extractPredictionValues(bytes) {
       }
     }
   });
-  return predictionFields.every(({ key }) => extracted[key]) ? extracted : null;
+  return predictionFields.every(({ key, optional }) => optional || extracted[key]) ? extracted : null;
 }
 
 function formatLabel(value) {
@@ -115,6 +115,7 @@ export default function DoctorDashboard() {
   const [metadata, setMetadata] = useState({});
   const [emergencyRecords, setEmergencyRecords] = useState([]);
   const [institutions, setInstitutions] = useState([]);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(true);
   const [membershipRequests, setMembershipRequests] = useState([]);
   const [accessRequests, setAccessRequests] = useState([]);
   const [notes, setNotes] = useState([]);
@@ -164,6 +165,29 @@ export default function DoctorDashboard() {
 
   async function loadAccessibleRecords() {
     const headers = await createAuthHeaders(walletAddress);
+    setLoadingInstitutions(true);
+    const institutionsPromise = axios
+      .get(`${API_URL}/api/institutions`)
+      .then((response) => {
+        setInstitutions(response.data);
+        return response.data;
+      })
+      .catch((error) => {
+        toast.error(error.response?.data?.message || error.message || "Unable to load institutions");
+        return [];
+      })
+      .finally(() => setLoadingInstitutions(false));
+    const membershipPromise = axios
+      .get(`${API_URL}/api/membership-requests`, { headers })
+      .then((response) => {
+        setMembershipRequests(response.data);
+        return response.data;
+      })
+      .catch((error) => {
+        toast.error(error.response?.data?.message || error.message || "Unable to load membership requests");
+        return [];
+      });
+
     const allRecords = await getAllRecords();
     const allIds = allRecords.map((record) => record.id).join(",");
     if (allIds) {
@@ -207,16 +231,13 @@ export default function DoctorDashboard() {
       setMetadata({});
     }
 
-    const [institutionsResponse, membershipResponse, accessRequestResponse, noteResponse, docResponse, historyResponse] = await Promise.all([
-      axios.get(`${API_URL}/api/institutions`),
-      axios.get(`${API_URL}/api/membership-requests`, { headers }),
+    const [accessRequestResponse, noteResponse, docResponse, historyResponse] = await Promise.all([
       axios.get(`${API_URL}/api/access-requests`, { headers }),
       axios.get(`${API_URL}/api/notes`, { headers }),
       axios.get(`${API_URL}/api/doctor-documents`, { headers }),
       axios.get(`${API_URL}/api/predict/history`, { headers }),
     ]);
-    setInstitutions(institutionsResponse.data);
-    setMembershipRequests(membershipResponse.data);
+    await Promise.all([institutionsPromise, membershipPromise]);
     setAccessRequests(accessRequestResponse.data);
     setNotes(noteResponse.data);
     setDocuments(docResponse.data);
@@ -820,9 +841,11 @@ export default function DoctorDashboard() {
               <select
                 value={joinForm.institutionId}
                 onChange={(event) => setJoinForm({ ...joinForm, institutionId: event.target.value })}
-                disabled={availableInstitutions.length === 0}
+                disabled={loadingInstitutions || availableInstitutions.length === 0}
               >
-                <option value="">{availableInstitutions.length === 0 ? "No available institutions" : "Choose institution"}</option>
+                <option value="">
+                  {loadingInstitutions ? "Loading institutions..." : availableInstitutions.length === 0 ? "No available institutions" : "Choose institution"}
+                </option>
                 {availableInstitutions.map((institution) => (
                   <option key={institution.institutionId} value={institution.institutionId}>
                     {institution.name} ({institution.institutionType})
@@ -834,8 +857,8 @@ export default function DoctorDashboard() {
               Message
               <textarea value={joinForm.message} onChange={(event) => setJoinForm({ ...joinForm, message: event.target.value })} />
             </label>
-            <button disabled={!joinForm.institutionId}>Request membership</button>
-            {availableInstitutions.length === 0 && (
+            <button disabled={loadingInstitutions || !joinForm.institutionId}>Request membership</button>
+            {!loadingInstitutions && availableInstitutions.length === 0 && (
               <span className="muted">Institutions with pending or approved requests are hidden from this list.</span>
             )}
           </form>

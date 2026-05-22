@@ -26,15 +26,28 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
   const [doctorAddress, setDoctorAddress] = useState("");
   const [institutionId, setInstitutionId] = useState("");
   const [institutions, setInstitutions] = useState([]);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(true);
   const [visibleKeyRows, setVisibleKeyRows] = useState(keyRows);
   const [accessStatus, setAccessStatus] = useState(null);
   const busy = accessStatus?.state === "working";
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/institutions`).then((response) => {
-      setInstitutions(response.data);
-      if (response.data[0]) setInstitutionId(String(response.data[0].institutionId));
-    });
+    let active = true;
+    setLoadingInstitutions(true);
+    axios
+      .get(`${API_URL}/api/institutions`)
+      .then((response) => {
+        if (!active) return;
+        setInstitutions(response.data);
+        if (response.data[0]) setInstitutionId(String(response.data[0].institutionId));
+      })
+      .catch((error) => toast.error(error.response?.data?.message || error.message || "Unable to load institutions"))
+      .finally(() => {
+        if (active) setLoadingInstitutions(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [API_URL]);
 
   useEffect(() => {
@@ -332,8 +345,14 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
           <div className="form-grid">
             <label>
               Registered institution
-              <select value={institutionId} onChange={(event) => setInstitutionId(event.target.value)} disabled={institutions.length === 0}>
-                {institutions.length === 0 && <option value="">No institutions available</option>}
+              <select
+                value={institutionId}
+                onChange={(event) => setInstitutionId(event.target.value)}
+                disabled={loadingInstitutions || institutions.length === 0}
+              >
+                {(loadingInstitutions || institutions.length === 0) && (
+                  <option value="">{loadingInstitutions ? "Loading institutions..." : "No institutions available"}</option>
+                )}
                 {institutions.map((institution) => (
                   <option key={institution.institutionId} value={institution.institutionId}>
                     {institution.name} ({institution.institutionType})
@@ -342,14 +361,14 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
               </select>
             </label>
             <div className="button-row">
-              <button onClick={grantInstitution} disabled={institutions.length === 0 || busy}>
+              <button onClick={grantInstitution} disabled={loadingInstitutions || institutions.length === 0 || busy}>
                 <KeyRound size={16} />
                 Grant
               </button>
-              <button className="secondary" onClick={reshareInstitutionKeys} disabled={institutions.length === 0 || busy}>
+              <button className="secondary" onClick={reshareInstitutionKeys} disabled={loadingInstitutions || institutions.length === 0 || busy}>
                 Share keys
               </button>
-              <button className="secondary" onClick={() => revokeInstitution()} disabled={institutions.length === 0 || busy}>
+              <button className="secondary" onClick={() => revokeInstitution()} disabled={loadingInstitutions || institutions.length === 0 || busy}>
                 Revoke
               </button>
             </div>

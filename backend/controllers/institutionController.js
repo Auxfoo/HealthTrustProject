@@ -20,6 +20,14 @@ function getReadContract() {
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, getProvider());
 }
 
+function getInstitutionIdentityKey(institution) {
+  return [
+    institution.name.trim().toLowerCase(),
+    institution.institutionType,
+    institution.adminWallet.toLowerCase(),
+  ].join("|");
+}
+
 async function extractInstitutionId(receipt) {
   const iface = new ethers.Interface(CONTRACT_ABI);
   for (const log of receipt.logs) {
@@ -60,20 +68,40 @@ exports.registerInstitution = async (req, res) => {
       return res.status(500).json({ message: "Unable to determine on-chain institution ID" });
     }
 
-    const institution = await prisma.institution.upsert({
-      where: { institutionId: onChainId },
-      update: {
-        name,
+    const normalizedAdminWallet = adminWallet.toLowerCase();
+    const existingInstitution = await prisma.institution.findFirst({
+      where: {
+        name: { equals: name, mode: "insensitive" },
         institutionType,
-        adminWallet: adminWallet.toLowerCase(),
+        adminWallet: normalizedAdminWallet,
       },
-      create: {
-        institutionId: onChainId,
-        name,
-        institutionType,
-        adminWallet: adminWallet.toLowerCase(),
-      },
+      orderBy: { createdAt: "desc" },
     });
+
+    const institution = existingInstitution
+      ? await prisma.institution.update({
+          where: { id: existingInstitution.id },
+          data: {
+            institutionId: onChainId,
+            name,
+            institutionType,
+            adminWallet: normalizedAdminWallet,
+          },
+        })
+      : await prisma.institution.upsert({
+          where: { institutionId: onChainId },
+          update: {
+            name,
+            institutionType,
+            adminWallet: normalizedAdminWallet,
+          },
+          create: {
+            institutionId: onChainId,
+            name,
+            institutionType,
+            adminWallet: normalizedAdminWallet,
+          },
+        });
 
     res.status(201).json({ institution, transactionHash });
   } catch (error) {
@@ -108,7 +136,14 @@ exports.getInstitutions = async (req, res) => {
     const institutions = await prisma.institution.findMany({
       orderBy: { createdAt: "desc" },
     });
-    res.json(institutions);
+    const seen = new Set();
+    const uniqueInstitutions = institutions.filter((institution) => {
+      const key = getInstitutionIdentityKey(institution);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    res.json(uniqueInstitutions);
   } catch (error) {
     res.status(500).json({ message: "Unable to fetch institutions", error: error.message });
   }

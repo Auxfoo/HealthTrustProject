@@ -73,7 +73,7 @@ export default function PatientDashboard() {
     const local = getLocalMetadata(walletAddress);
     const merged = {};
     response.data.forEach((record) => {
-      merged[record.id] = { ...(record.metadata || {}), ...(local[record.id] || {}) };
+      merged[record.id] = { ...(local[record.id] || {}), ...(record.metadata || {}) };
     });
     setMetadata(merged);
 
@@ -232,7 +232,7 @@ export default function PatientDashboard() {
         throw new Error("Transaction confirmed, but the RecordAdded event was not found. Check that the frontend ABI matches the deployed contract.");
       }
       const recordId = Number(eventLog.args.recordId);
-      const data = { filename: file.name, mimeType: file.type, aesKey: key, ...uploadMeta };
+      const data = { filename: file.name, mimeType: file.type, aesKey: key, archived: false, ...uploadMeta };
       saveLocalMetadata(walletAddress, recordId, data);
       setUploadStatus({
         state: "working",

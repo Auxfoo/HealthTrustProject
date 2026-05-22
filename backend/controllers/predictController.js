@@ -27,8 +27,10 @@ exports.predictDiabetes = async (req, res) => {
     }
     res.json(result);
   } catch (error) {
-    res.status(500).json({
-      message: "Unable to get diabetes prediction",
+    const status = error.response?.status === 400 ? 400 : 500;
+    const detail = error.response?.data?.detail;
+    res.status(status).json({
+      message: detail?.message || "Unable to get diabetes prediction",
       error: error.response?.data || error.message,
     });
   }

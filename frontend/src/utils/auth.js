@@ -3,6 +3,7 @@ import { getSigner } from "./contractHelper";
 const AUTH_SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 const AUTH_SESSION_REFRESH_SKEW_MS = 10 * 60 * 1000;
 const AUTH_SESSION_STORAGE_VERSION = "v2";
+const pendingSessions = new Map();
 
 function sessionKey(wallet) {
   return `healthtrust_auth_session_${AUTH_SESSION_STORAGE_VERSION}_${wallet?.toLowerCase()}`;
@@ -56,13 +57,26 @@ export async function createAuthSession(wallet) {
   const cached = readStoredSession(wallet);
   if (cached) return cached;
 
+  const normalizedWallet = wallet.toLowerCase();
+  const pending = pendingSessions.get(normalizedWallet);
+  if (pending) return pending;
+
   const expiresAt = Date.now() + AUTH_SESSION_TTL_MS;
   const message = buildMessage(wallet, "session", expiresAt);
-  const signer = await getSigner(wallet);
-  const signature = await signer.signMessage(message);
-  const session = { wallet: wallet.toLowerCase(), message, signature };
-  sessionStorage.setItem(sessionKey(wallet), JSON.stringify(session));
-  return session;
+  const sessionPromise = (async () => {
+    const signer = await getSigner(wallet);
+    const signature = await signer.signMessage(message);
+    const session = { wallet: normalizedWallet, message, signature };
+    sessionStorage.setItem(sessionKey(wallet), JSON.stringify(session));
+    return session;
+  })();
+
+  pendingSessions.set(normalizedWallet, sessionPromise);
+  try {
+    return await sessionPromise;
+  } finally {
+    pendingSessions.delete(normalizedWallet);
+  }
 }
 
 export async function createAuthHeaders(wallet) {

@@ -9,6 +9,8 @@ import { getEncryptionPublicKey } from "../utils/keySharing";
 export default function Register() {
   const { walletAddress, API_URL, fetchProfile } = useWallet();
   const [institutions, setInstitutions] = useState([]);
+  const [loadingInstitutions, setLoadingInstitutions] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -23,7 +25,20 @@ export default function Register() {
   });
 
   useEffect(() => {
-    axios.get(`${API_URL}/api/institutions`).then((response) => setInstitutions(response.data));
+    let active = true;
+    setLoadingInstitutions(true);
+    axios
+      .get(`${API_URL}/api/institutions`)
+      .then((response) => {
+        if (active) setInstitutions(response.data);
+      })
+      .catch((error) => toast.error(error.response?.data?.message || error.message || "Unable to load institutions"))
+      .finally(() => {
+        if (active) setLoadingInstitutions(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [API_URL]);
 
   function update(field, value) {
@@ -32,12 +47,14 @@ export default function Register() {
 
   async function submit(event) {
     event.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const requestedInstitutionId = form.role === "doctor" && form.institutionId ? Number(form.institutionId) : undefined;
     let institutionId = form.role === "doctor" ? undefined : form.institutionId ? Number(form.institutionId) : undefined;
 
-    if (form.role === "institution_admin") {
-      const toastId = toast.info("Registering institution on-chain...", { autoClose: 3000 });
-      try {
+    try {
+      if (form.role === "institution_admin") {
+        const toastId = toast.info("Registering institution on-chain...", { autoClose: 3000 });
         const tx = await registerInstitution(form.institutionName, form.institutionType);
         const receipt = await tx.wait();
         const eventLog = await parseReceiptEvent(receipt, "InstitutionRegistered");
@@ -53,62 +70,58 @@ export default function Register() {
         });
 
         toast.update(toastId, { render: "Institution registered", type: "success", isLoading: false, autoClose: 3000 });
-      } catch (error) {
-        toast.update(toastId, {
-          render: error.reason || error.message,
-          type: "error",
-          isLoading: false,
-          autoClose: 5000,
-        });
-        return;
       }
-    }
 
-    let encryptionPublicKey = "";
-    if (form.role !== "institution_admin") {
-      try {
-        encryptionPublicKey = await getEncryptionPublicKey(walletAddress);
-      } catch (error) {
-        toast.warn("Profile saved without encryption public key. Secure key sharing will be limited until you register it.");
-      }
-    }
-
-    const authHeaders = await createAuthHeaders(walletAddress);
-    await axios.post(`${API_URL}/api/users/register`, {
-      wallet: walletAddress,
-      name: form.name,
-      email: form.email,
-      role: form.role,
-      institutionId,
-      encryptionPublicKey,
-      bloodType: form.bloodType,
-      allergies: form.allergies,
-      chronicConditions: form.chronicConditions,
-      emergencyContact: form.emergencyContact,
-    }, {
-      headers: authHeaders,
-    });
-    if (form.role === "doctor" && requestedInstitutionId) {
-      try {
-        await axios.post(
-          `${API_URL}/api/membership-requests`,
-          {
-            institutionId: requestedInstitutionId,
-            message: `${form.name} requested institution membership during doctor registration.`,
-          },
-          { headers: authHeaders }
-        );
-        toast.success("Institution membership request sent");
-      } catch (error) {
-        if (error.response?.status === 409) {
-          toast.info(error.response.data.message);
-        } else {
-          toast.error(error.response?.data?.message || error.message || "Profile saved, but membership request failed");
+      let encryptionPublicKey = "";
+      if (form.role !== "institution_admin") {
+        try {
+          encryptionPublicKey = await getEncryptionPublicKey(walletAddress);
+        } catch (error) {
+          toast.warn("Profile saved without encryption public key. Secure key sharing will be limited until you register it.");
         }
       }
+
+      const authHeaders = await createAuthHeaders(walletAddress);
+      await axios.post(`${API_URL}/api/users/register`, {
+        wallet: walletAddress,
+        name: form.name,
+        email: form.email,
+        role: form.role,
+        institutionId,
+        encryptionPublicKey,
+        bloodType: form.bloodType,
+        allergies: form.allergies,
+        chronicConditions: form.chronicConditions,
+        emergencyContact: form.emergencyContact,
+      }, {
+        headers: authHeaders,
+      });
+      if (form.role === "doctor" && requestedInstitutionId) {
+        try {
+          await axios.post(
+            `${API_URL}/api/membership-requests`,
+            {
+              institutionId: requestedInstitutionId,
+              message: `${form.name} requested institution membership during doctor registration.`,
+            },
+            { headers: authHeaders }
+          );
+          toast.success("Institution membership request sent");
+        } catch (error) {
+          if (error.response?.status === 409) {
+            toast.info(error.response.data.message);
+          } else {
+            toast.error(error.response?.data?.message || error.message || "Profile saved, but membership request failed");
+          }
+        }
+      }
+      await fetchProfile(walletAddress);
+      toast.success("Profile saved");
+    } catch (error) {
+      toast.error(error.reason || error.response?.data?.message || error.message || "Unable to save profile");
+    } finally {
+      setIsSubmitting(false);
     }
-    await fetchProfile(walletAddress);
-    toast.success("Profile saved");
   }
 
   return (
@@ -135,8 +148,8 @@ export default function Register() {
         {form.role === "doctor" && (
           <label>
             Institution
-            <select value={form.institutionId} onChange={(event) => update("institutionId", event.target.value)}>
-              <option value="">None</option>
+            <select value={form.institutionId} onChange={(event) => update("institutionId", event.target.value)} disabled={loadingInstitutions}>
+              <option value="">{loadingInstitutions ? "Loading institutions..." : "None"}</option>
               {institutions.map((institution) => (
                 <option key={institution.institutionId} value={institution.institutionId}>
                   {institution.name} ({institution.institutionType})
@@ -187,7 +200,7 @@ export default function Register() {
           </>
         )}
 
-        <button>Save Profile</button>
+        <button disabled={isSubmitting}>{isSubmitting ? "Waiting for MetaMask..." : "Save Profile"}</button>
       </form>
     </main>
   );

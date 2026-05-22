@@ -2,6 +2,7 @@ import React from "react";
 import { Activity, Clipboard, LogIn, LogOut, Moon, Sun } from "lucide-react";
 import { toast } from "react-toastify";
 import { useWallet } from "../context/WalletContext";
+import { useLanguage } from "../i18n";
 
 function truncateWallet(wallet) {
   if (!wallet) return "";
@@ -10,6 +11,7 @@ function truncateWallet(wallet) {
 
 export default function Navbar() {
   const { walletAddress, userProfile, isConnected, connectWallet, logout, theme, toggleTheme } = useWallet();
+  const { language, toggleLanguage } = useLanguage();
 
   async function copyWallet() {
     await navigator.clipboard.writeText(walletAddress);
@@ -28,6 +30,9 @@ export default function Navbar() {
             {userProfile.name} / {userProfile.role.replace("_", " ")}
           </span>
         )}
+        <button className="icon-button ghost language-toggle" onClick={toggleLanguage} aria-label="Toggle language">
+          {language === "ku" ? "EN" : "کوردی"}
+        </button>
         <button className="icon-button ghost" onClick={toggleTheme} aria-label="Toggle dark mode">
           {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
         </button>

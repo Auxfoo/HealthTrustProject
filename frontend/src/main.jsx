@@ -4,6 +4,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import App from "./App";
 import { WalletProvider } from "./context/WalletContext";
+import { LanguageProvider, LocalizedPage } from "./i18n";
 import "./styles.css";
 
 function ToastAutoDismiss() {
@@ -44,24 +45,27 @@ function ToastAutoDismiss() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <WalletProvider>
-      <App />
-      <ToastAutoDismiss />
-      <ToastContainer
-        position="bottom-right"
-        theme="dark"
-        autoClose={3000}
-        limit={2}
-        newestOnTop
-        closeButton={false}
-        closeOnClick
-        draggable
-        pauseOnHover={false}
-        pauseOnFocusLoss={false}
-        hideProgressBar={false}
-        toastClassName="healthtrust-toast"
-        progressClassName="healthtrust-toast-progress"
-      />
-    </WalletProvider>
+    <LanguageProvider>
+      <WalletProvider>
+        <App />
+        <LocalizedPage />
+        <ToastAutoDismiss />
+        <ToastContainer
+          position="bottom-right"
+          theme="dark"
+          autoClose={3000}
+          limit={2}
+          newestOnTop
+          closeButton={false}
+          closeOnClick
+          draggable
+          pauseOnHover={false}
+          pauseOnFocusLoss={false}
+          hideProgressBar={false}
+          toastClassName="healthtrust-toast"
+          progressClassName="healthtrust-toast-progress"
+        />
+      </WalletProvider>
+    </LanguageProvider>
   </React.StrictMode>
 );

@@ -6,11 +6,6 @@ import { clearActiveWallet, setActiveWallet } from "../utils/contractHelper";
 const WalletContext = createContext(null);
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-function extractPermissionAccount(permission) {
-  const caveat = permission?.caveats?.find((item) => item.type === "restrictReturnedAccounts");
-  return caveat?.value?.[0] || "";
-}
-
 export function WalletProvider({ children }) {
   const [walletAddress, setWalletAddress] = useState("");
   const [userProfile, setUserProfile] = useState(null);
@@ -47,28 +42,12 @@ export function WalletProvider({ children }) {
       throw new Error("MetaMask is required");
     }
 
-    ignoreAccountEventsUntil.current = Date.now() + 2500;
-    try {
-      await window.ethereum.request({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] });
-    } catch (error) {
-      console.warn("Wallet permission revoke was skipped:", error.message);
+    let accounts = await window.ethereum.request({ method: "eth_accounts" });
+    if (!accounts.length) {
+      ignoreAccountEventsUntil.current = Date.now() + 2500;
+      accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
     }
-
-    let wallet = "";
-    try {
-      const permissions = await window.ethereum.request({
-        method: "wallet_requestPermissions",
-        params: [{ eth_accounts: {} }],
-      });
-      wallet = extractPermissionAccount(permissions?.[0]);
-    } catch (error) {
-      if (error.code === 4001) throw error;
-    }
-
-    if (!wallet) {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      wallet = accounts[0];
-    }
+    const wallet = accounts[0];
     if (!wallet) throw new Error("No wallet account was selected");
 
     clearAllAuthSessions();

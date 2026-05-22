@@ -36,6 +36,8 @@ export default function InstitutionDashboard() {
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [form, setForm] = useState({ name: "", institutionType: "hospital" });
   const [contractStatus, setContractStatus] = useState({ stale: false, message: "" });
+  const [pendingAction, setPendingAction] = useState("");
+  const busy = Boolean(pendingAction);
 
   async function loadChainAuditRows(institutionId) {
     const provider = await getBrowserProvider();
@@ -171,6 +173,8 @@ export default function InstitutionDashboard() {
   }
 
   async function registerCurrentInstitution(name, institutionType) {
+    if (busy) return;
+    setPendingAction("institution");
     const toastId = toast.info("Registering institution...", { autoClose: 3000 });
     try {
       const tx = await registerInstitution(name, institutionType);
@@ -186,10 +190,14 @@ export default function InstitutionDashboard() {
       await loadInstitution();
     } catch (error) {
       toast.update(toastId, { render: error.reason || error.response?.data?.message || error.message, type: "error", isLoading: false, autoClose: 5000 });
+    } finally {
+      setPendingAction("");
     }
   }
 
-  async function addDoctor(address = doctorAddress) {
+  async function addDoctor(address = doctorAddress, options = {}) {
+    const controlledByParent = Boolean(options.controlledByParent);
+    if (busy && !controlledByParent) return false;
     if (!institution) {
       toast.error("Register an institution first");
       return false;
@@ -198,6 +206,7 @@ export default function InstitutionDashboard() {
       toast.error("Enter a valid doctor wallet address");
       return false;
     }
+    if (!controlledByParent) setPendingAction("doctor");
     const toastId = toast.info("Adding doctor...", { autoClose: 3000 });
     try {
       const tx = await addDoctorToInstitution(institution.institutionId, address);
@@ -214,14 +223,18 @@ export default function InstitutionDashboard() {
     } catch (error) {
       toast.update(toastId, { render: error.reason || error.message, type: "error", isLoading: false, autoClose: 5000 });
       return false;
+    } finally {
+      if (!controlledByParent) setPendingAction("");
     }
   }
 
   async function removeDoctor(address) {
+    if (busy) return;
     if (!institution) {
       toast.error("Register an institution first");
       return;
     }
+    setPendingAction("doctor");
     const toastId = toast.info("Removing doctor...", { autoClose: 3000 });
     try {
       const tx = await removeDoctorFromInstitution(institution.institutionId, address);
@@ -233,6 +246,8 @@ export default function InstitutionDashboard() {
       await loadInstitution();
     } catch (error) {
       toast.update(toastId, { render: error.reason || error.message, type: "error", isLoading: false, autoClose: 5000 });
+    } finally {
+      setPendingAction("");
     }
   }
 
@@ -242,9 +257,11 @@ export default function InstitutionDashboard() {
   }
 
   async function updateMembership(request, status) {
+    if (busy) return;
+    setPendingAction(`membership-${request.id}`);
     try {
       if (status === "approved") {
-        const doctorAdded = await addDoctor(request.doctorWallet);
+        const doctorAdded = await addDoctor(request.doctorWallet, { controlledByParent: true });
         if (!doctorAdded) return;
       }
       await axios.patch(
@@ -256,6 +273,8 @@ export default function InstitutionDashboard() {
       await loadInstitution();
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || `Unable to mark membership ${status}`);
+    } finally {
+      setPendingAction("");
     }
   }
 
@@ -352,8 +371,8 @@ export default function InstitutionDashboard() {
                     This usually happens after redeploying the smart contract. Register this institution again on the current
                     contract to get a new on-chain ID for this wallet.
                   </span>
-                  <button onClick={() => registerCurrentInstitution(institution.name, institution.institutionType)}>
-                    Register on current contract
+                  <button onClick={() => registerCurrentInstitution(institution.name, institution.institutionType)} disabled={busy}>
+                    {pendingAction === "institution" ? "Waiting for MetaMask..." : "Register on current contract"}
                   </button>
                 </div>
               )}
@@ -371,7 +390,7 @@ export default function InstitutionDashboard() {
                   <option value="clinic">Clinic</option>
                 </select>
               </label>
-              <button>Register Institution</button>
+              <button disabled={busy}>{pendingAction === "institution" ? "Waiting for MetaMask..." : "Register Institution"}</button>
             </form>
           )}
         </section>
@@ -410,7 +429,7 @@ export default function InstitutionDashboard() {
         <section className="panel">
           <div className="inline-form">
             <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} placeholder="Doctor wallet address" />
-            <button className="icon-button with-label" onClick={() => addDoctor()} disabled={!institution}>
+            <button className="icon-button with-label" onClick={() => addDoctor()} disabled={!institution || busy}>
               <Plus size={16} />
               Add
             </button>
@@ -423,7 +442,7 @@ export default function InstitutionDashboard() {
                   <button className="icon-button ghost" onClick={() => copyAddress(doctor)} aria-label="Copy doctor wallet">
                     <Clipboard size={16} />
                   </button>
-                  <button className="icon-button" onClick={() => removeDoctor(doctor)} aria-label="Remove doctor">
+                  <button className="icon-button" onClick={() => removeDoctor(doctor)} aria-label="Remove doctor" disabled={busy}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -451,11 +470,11 @@ export default function InstitutionDashboard() {
                 {request.message && <p>{request.message}</p>}
               </div>
               <div className="row-actions">
-                <button onClick={() => updateMembership(request, "approved")}>
+                <button onClick={() => updateMembership(request, "approved")} disabled={busy}>
                   <Check size={16} />
                   Approve
                 </button>
-                <button className="secondary" onClick={() => updateMembership(request, "rejected")} aria-label="Reject request">
+                <button className="secondary" onClick={() => updateMembership(request, "rejected")} aria-label="Reject request" disabled={busy}>
                   <X size={16} />
                 </button>
               </div>
