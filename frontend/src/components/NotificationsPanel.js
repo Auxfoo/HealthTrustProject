@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Check, Inbox } from "lucide-react";
+import { Bell, Check, Inbox } from "lucide-react";
 import { useWallet } from "../context/WalletContext";
 import { createAuthHeaders } from "../utils/auth";
+import { useLanguage } from "../i18n";
 
 export default function NotificationsPanel() {
   const { API_URL, walletAddress } = useWallet();
+  const { t, localizeText, formatDate } = useLanguage();
   const [notifications, setNotifications] = useState([]);
 
   async function loadNotifications() {
@@ -32,18 +34,18 @@ export default function NotificationsPanel() {
   return (
     <section className="panel notifications-panel">
       <div className="panel-title-row">
-        <h2>Notifications</h2>
+        <h2><Bell size={18} />{t("Notifications")}</h2>
       </div>
       <div className="request-list">
         {notifications.map((item) => (
           <article className={`request-row ${item.read ? "" : "unread"}`} key={item.id}>
             <div>
-              <strong>{item.title}</strong>
-              <span>{item.message}</span>
-              <small>{new Date(item.createdAt).toLocaleString()}</small>
+              <strong>{localizeText(item.title)}</strong>
+              <span>{localizeText(item.message)}</span>
+              <small>{formatDate(item.createdAt)}</small>
             </div>
             {!item.read && (
-              <button className="icon-button ghost" onClick={() => markRead(item.id)} aria-label="Mark notification read">
+              <button className="icon-button ghost" onClick={() => markRead(item.id)} aria-label={t("Mark notification read")}>
                 <Check size={16} />
               </button>
             )}
@@ -52,8 +54,8 @@ export default function NotificationsPanel() {
         {notifications.length === 0 && (
           <div className="empty-state">
             <Inbox size={28} />
-            <strong>No notifications</strong>
-            <span>Updates about access, notes, documents, and membership will appear here.</span>
+            <strong>{t("No notifications")}</strong>
+            <span>{t("Updates about access, notes, documents, and membership will appear here.")}</span>
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { BarChart3, Building2, Clipboard, Check, Download, FileText, Plus, RefreshCw, Stethoscope, Trash2, X } from "lucide-react";
+import { BarChart3, Bell, Building2, Clipboard, ClipboardList, Check, Download, FileText, Lock, Plus, RefreshCw, Stethoscope, Trash2, UserRound, X } from "lucide-react";
 import { ethers } from "ethers";
 import { useWallet } from "../context/WalletContext";
 import NotificationsPanel from "../components/NotificationsPanel";
@@ -21,9 +21,22 @@ import {
 } from "../utils/contractHelper";
 import { createAuthHeaders } from "../utils/auth";
 import { createHealthTrustPdf } from "../utils/pdfReport";
+import { useLanguage } from "../i18n";
+
+const institutionTabs = [
+  { key: "institution", label: "My Institution", icon: Building2 },
+  { key: "analytics", label: "Analytics", icon: BarChart3 },
+  { key: "doctors", label: "Doctors", icon: Stethoscope },
+  { key: "doctor_requests", label: "Doctor Requests", icon: UserRound },
+  { key: "shared", label: "Shared", icon: FileText },
+  { key: "audit", label: "Audit", icon: ClipboardList },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "security", label: "Security", icon: Lock },
+];
 
 export default function InstitutionDashboard() {
   const { walletAddress, API_URL } = useWallet();
+  const { t, localizeText, formatDate, formatNumber } = useLanguage();
   const [activeTab, setActiveTab] = useState("institution");
   const [institution, setInstitution] = useState(null);
   const [doctors, setDoctors] = useState([]);
@@ -175,7 +188,7 @@ export default function InstitutionDashboard() {
   async function registerCurrentInstitution(name, institutionType) {
     if (busy) return;
     setPendingAction("institution");
-    const toastId = toast.info("Registering institution...", { autoClose: 3000 });
+    const toastId = toast.info(t("Registering institution..."), { autoClose: 3000 });
     try {
       const tx = await registerInstitution(name, institutionType);
       const receipt = await tx.wait();
@@ -186,10 +199,10 @@ export default function InstitutionDashboard() {
         { name, institutionType, adminWallet: walletAddress, institutionId },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.update(toastId, { render: "Institution registered", type: "success", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Institution registered"), type: "success", isLoading: false, autoClose: 3000 });
       await loadInstitution();
     } catch (error) {
-      toast.update(toastId, { render: error.reason || error.response?.data?.message || error.message, type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.reason || error.response?.data?.message || error.message), type: "error", isLoading: false, autoClose: 5000 });
     } finally {
       setPendingAction("");
     }
@@ -199,15 +212,15 @@ export default function InstitutionDashboard() {
     const controlledByParent = Boolean(options.controlledByParent);
     if (busy && !controlledByParent) return false;
     if (!institution) {
-      toast.error("Register an institution first");
+      toast.error(t("Register an institution first"));
       return false;
     }
     if (!ethers.isAddress(address)) {
-      toast.error("Enter a valid doctor wallet address");
+      toast.error(t("Enter a valid doctor wallet address"));
       return false;
     }
     if (!controlledByParent) setPendingAction("doctor");
-    const toastId = toast.info("Adding doctor...", { autoClose: 3000 });
+    const toastId = toast.info(t("Adding doctor..."), { autoClose: 3000 });
     try {
       const tx = await addDoctorToInstitution(institution.institutionId, address);
       await tx.wait();
@@ -216,12 +229,12 @@ export default function InstitutionDashboard() {
         {},
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.update(toastId, { render: "Doctor added", type: "success", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Doctor added"), type: "success", isLoading: false, autoClose: 3000 });
       setDoctorAddress("");
       await loadInstitution();
       return true;
     } catch (error) {
-      toast.update(toastId, { render: error.reason || error.message, type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.reason || error.message), type: "error", isLoading: false, autoClose: 5000 });
       return false;
     } finally {
       if (!controlledByParent) setPendingAction("");
@@ -231,21 +244,21 @@ export default function InstitutionDashboard() {
   async function removeDoctor(address) {
     if (busy) return;
     if (!institution) {
-      toast.error("Register an institution first");
+      toast.error(t("Register an institution first"));
       return;
     }
     setPendingAction("doctor");
-    const toastId = toast.info("Removing doctor...", { autoClose: 3000 });
+    const toastId = toast.info(t("Removing doctor..."), { autoClose: 3000 });
     try {
       const tx = await removeDoctorFromInstitution(institution.institutionId, address);
       await tx.wait();
       await axios.delete(`${API_URL}/api/institutions/${institution.institutionId}/doctors/${address}/link`, {
         headers: await createAuthHeaders(walletAddress),
       });
-      toast.update(toastId, { render: "Doctor removed", type: "success", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Doctor removed"), type: "success", isLoading: false, autoClose: 3000 });
       await loadInstitution();
     } catch (error) {
-      toast.update(toastId, { render: error.reason || error.message, type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.reason || error.message), type: "error", isLoading: false, autoClose: 5000 });
     } finally {
       setPendingAction("");
     }
@@ -253,7 +266,7 @@ export default function InstitutionDashboard() {
 
   async function copyAddress(address) {
     await navigator.clipboard.writeText(address);
-    toast.success("Doctor wallet copied");
+    toast.success(t("Doctor wallet copied"));
   }
 
   async function updateMembership(request, status) {
@@ -269,10 +282,10 @@ export default function InstitutionDashboard() {
         { status },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.success(`Membership ${status}`);
+      toast.success(localizeText(`Membership ${status}`));
       await loadInstitution();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || `Unable to mark membership ${status}`);
+      toast.error(error.response?.data?.message || error.message || localizeText(`Unable to mark membership ${status}`));
     } finally {
       setPendingAction("");
     }
@@ -331,48 +344,49 @@ export default function InstitutionDashboard() {
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Institution Workspace</p>
-          <h1>Organization Access</h1>
+          <p className="eyebrow">{t("Institution Workspace")}</p>
+          <h1>{t("Organization Access")}</h1>
         </div>
-        <button className="icon-button secondary" onClick={loadInstitution} aria-label="Refresh institution">
+        <button className="icon-button secondary" onClick={loadInstitution} aria-label={t("Refresh institution")}>
           <RefreshCw size={16} />
         </button>
       </div>
 
       <section className="stat-grid">
-        <StatCard icon={Building2} label="Institution" value={institution?.name || "Not registered"} />
-        <StatCard icon={Stethoscope} label="Doctors" value={doctors.length} accent="green" />
-        <StatCard icon={FileText} label="Shared records" value={activeSharedRecords} />
-        <StatCard icon={Building2} label="Pending joins" value={pendingMembership.length} accent="amber" />
-        <StatCard icon={BarChart3} label="Monthly access" value={monthlyAccessEvents} accent="amber" />
+        <StatCard icon={Building2} label={t("Institution")} value={institution?.name || t("Not registered")} />
+        <StatCard icon={Stethoscope} label={t("Doctors")} value={doctors.length} accent="green" />
+        <StatCard icon={FileText} label={t("Shared records")} value={activeSharedRecords} />
+        <StatCard icon={Building2} label={t("Pending joins")} value={pendingMembership.length} accent="amber" />
+        <StatCard icon={BarChart3} label={t("Monthly access")} value={monthlyAccessEvents} accent="amber" />
       </section>
 
       <div className="tabs">
-        {["institution", "analytics", "doctors", "doctor_requests", "shared", "audit", "notifications", "security"].map((tab) => (
-          <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-            {tab === "institution" ? "My Institution" : tab === "doctor_requests" ? "Doctor Requests" : tab[0].toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+        {institutionTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.key} className={activeTab === tab.key ? "active" : ""} onClick={() => setActiveTab(tab.key)}>
+              {Icon && <Icon size={16} />}
+              {t(tab.label)}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "institution" && (
         <section className="panel narrow">
           {institution ? (
             <div className="info-stack">
-              <h2>{institution.name}</h2>
-              <span>Type: {institution.institutionType}</span>
-              <span>On-chain ID: {institution.institutionId}</span>
-              <span>Admin: {institution.adminWallet}</span>
+              <h2><Building2 size={18} />{institution.name}</h2>
+              <span>{t("Type")}: {localizeText(institution.institutionType)}</span>
+              <span>{t("On-chain ID")}: <bdi dir="ltr">{formatNumber(institution.institutionId)}</bdi></span>
+              <span>{t("Admin")}: <bdi dir="ltr">{institution.adminWallet}</bdi></span>
               {contractStatus.stale && (
                 <div className="notice">
-                  <strong>Contract sync needed</strong>
-                  <span>{contractStatus.message}</span>
-                  <span>
-                    This usually happens after redeploying the smart contract. Register this institution again on the current
-                    contract to get a new on-chain ID for this wallet.
-                  </span>
+                  <strong>{t("Contract sync needed")}</strong>
+                  <span>{localizeText(contractStatus.message)}</span>
+                  <span>{t("This usually happens after redeploying the smart contract. Register this institution again on the current contract to get a new on-chain ID for this wallet.")}</span>
                   <button onClick={() => registerCurrentInstitution(institution.name, institution.institutionType)} disabled={busy}>
-                    {pendingAction === "institution" ? "Waiting for MetaMask..." : "Register on current contract"}
+                    {pendingAction === "institution" ? t("Waiting for MetaMask...") : t("Register on current contract")}
                   </button>
                 </div>
               )}
@@ -380,17 +394,17 @@ export default function InstitutionDashboard() {
           ) : (
             <form className="form-grid" onSubmit={createInstitution}>
               <label>
-                Institution name
+                {t("Institution name")}
                 <input value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} required />
               </label>
               <label>
-                Institution type
+                {t("Institution type")}
                 <select value={form.institutionType} onChange={(event) => setForm({ ...form, institutionType: event.target.value })}>
-                  <option value="hospital">Hospital</option>
-                  <option value="clinic">Clinic</option>
+                  <option value="hospital">{t("Hospital")}</option>
+                  <option value="clinic">{t("Clinic")}</option>
                 </select>
               </label>
-              <button disabled={busy}>{pendingAction === "institution" ? "Waiting for MetaMask..." : "Register Institution"}</button>
+              <button disabled={busy}>{pendingAction === "institution" ? t("Waiting for MetaMask...") : t("Register Institution")}</button>
             </form>
           )}
         </section>
@@ -398,27 +412,27 @@ export default function InstitutionDashboard() {
 
       {activeTab === "analytics" && (
         <section className="panel request-list">
-          <h3>Institution Analytics</h3>
+          <h3><BarChart3 size={18} />{t("Institution Analytics")}</h3>
           <article className="request-row">
             <div>
-              <strong>Operational Summary</strong>
-              <span>{doctors.length} registered doctor(s)</span>
-              <span>{activeSharedRecords} active shared record(s)</span>
-              <span>{pendingMembership.length} pending membership request(s)</span>
-              <span>{monthlyAccessEvents} encrypted key event(s) this month</span>
+              <strong>{t("Operational Summary")}</strong>
+              <span>{localizeText(`${doctors.length} registered doctor(s)`)}</span>
+              <span>{localizeText(`${activeSharedRecords} active shared record(s)`)}</span>
+              <span>{localizeText(`${pendingMembership.length} pending membership request(s)`)}</span>
+              <span>{localizeText(`${monthlyAccessEvents} encrypted key event(s) this month`)}</span>
             </div>
           </article>
           <article className="request-row">
             <div>
-              <strong>Records by category</strong>
+              <strong>{t("Records by category")}</strong>
               {Object.keys(categoryCounts).length > 0 ? (
                 Object.entries(categoryCounts).map(([category, count]) => (
                   <span key={category}>
-                    {category}: {count}
+                    {localizeText(category)}: {formatNumber(count)}
                   </span>
                 ))
               ) : (
-                <span>No shared record categories yet.</span>
+                <span>{t("No shared record categories yet.")}</span>
               )}
             </div>
           </article>
@@ -428,21 +442,21 @@ export default function InstitutionDashboard() {
       {activeTab === "doctors" && (
         <section className="panel">
           <div className="inline-form">
-            <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} placeholder="Doctor wallet address" />
+            <input value={doctorAddress} onChange={(event) => setDoctorAddress(event.target.value)} placeholder={t("Doctor wallet address")} />
             <button className="icon-button with-label" onClick={() => addDoctor()} disabled={!institution || busy}>
               <Plus size={16} />
-              Add
+              {t("Add")}
             </button>
           </div>
           <div className="doctor-list">
             {doctors.map((doctor) => (
               <div className="doctor-row" key={doctor}>
-                <span>{doctor}</span>
+                <span><bdi dir="ltr">{doctor}</bdi></span>
                 <div className="row-actions">
-                  <button className="icon-button ghost" onClick={() => copyAddress(doctor)} aria-label="Copy doctor wallet">
+                  <button className="icon-button ghost" onClick={() => copyAddress(doctor)} aria-label={t("Copy doctor wallet")}>
                     <Clipboard size={16} />
                   </button>
-                  <button className="icon-button" onClick={() => removeDoctor(doctor)} aria-label="Remove doctor" disabled={busy}>
+                  <button className="icon-button" onClick={() => removeDoctor(doctor)} aria-label={t("Remove doctor")} disabled={busy}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -451,8 +465,8 @@ export default function InstitutionDashboard() {
             {doctors.length === 0 && (
               <div className="empty-state">
                 <Stethoscope size={28} />
-                <strong>No doctors yet</strong>
-                <span>Approved or manually added doctors will appear here.</span>
+                <strong>{t("No doctors yet")}</strong>
+                <span>{t("Approved or manually added doctors will appear here.")}</span>
               </div>
             )}
           </div>
@@ -461,20 +475,20 @@ export default function InstitutionDashboard() {
 
       {activeTab === "doctor_requests" && (
         <section className="panel request-list">
-          <h3>Doctor Membership Requests</h3>
+          <h3><UserRound size={18} />{t("Doctor Membership Requests")}</h3>
           {pendingMembership.map((request) => (
             <article className="request-row" key={request.id}>
               <div>
-                <strong>{request.doctorWallet}</strong>
-                <small>Status: {request.status}</small>
+                <strong><bdi dir="ltr">{request.doctorWallet}</bdi></strong>
+                <small>{localizeText(`Status: ${request.status}`)}</small>
                 {request.message && <p>{request.message}</p>}
               </div>
               <div className="row-actions">
                 <button onClick={() => updateMembership(request, "approved")} disabled={busy}>
                   <Check size={16} />
-                  Approve
+                  {t("Approve")}
                 </button>
-                <button className="secondary" onClick={() => updateMembership(request, "rejected")} aria-label="Reject request" disabled={busy}>
+                <button className="secondary" onClick={() => updateMembership(request, "rejected")} aria-label={t("Reject")} disabled={busy}>
                   <X size={16} />
                 </button>
               </div>
@@ -483,8 +497,8 @@ export default function InstitutionDashboard() {
           {pendingMembership.length === 0 && (
             <div className="empty-state">
               <Stethoscope size={28} />
-              <strong>No Doctor Requests</strong>
-              <span>New doctor membership requests will appear here.</span>
+              <strong>{t("No Doctor Requests")}</strong>
+              <span>{t("New doctor membership requests will appear here.")}</span>
             </div>
           )}
         </section>
@@ -493,14 +507,14 @@ export default function InstitutionDashboard() {
       {activeTab === "shared" && (
         <section className="panel record-list">
           <div className="panel-title-row">
-            <h3>Records Shared With This Institution</h3>
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter category">
-              <option value="all">All categories</option>
-              <option value="lab">Lab</option>
-              <option value="prescription">Prescription</option>
-              <option value="diagnosis">Diagnosis</option>
-              <option value="imaging">Imaging</option>
-              <option value="other">Other</option>
+            <h3><FileText size={18} />{t("Records Shared With This Institution")}</h3>
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label={t("Filter category")}>
+              <option value="all">{t("All categories")}</option>
+              <option value="lab">{t("Lab")}</option>
+              <option value="prescription">{t("Prescription")}</option>
+              <option value="diagnosis">{t("Diagnosis")}</option>
+              <option value="imaging">{t("Imaging")}</option>
+              <option value="other">{t("Other")}</option>
             </select>
           </div>
           {filteredSharedRecords.map((record) => (
@@ -510,7 +524,7 @@ export default function InstitutionDashboard() {
               filename={metadata[record.id]?.title || metadata[record.id]?.filename}
               actions={
                 <span className="badge shared-key-badge">
-                  {sharedKeys.filter((key) => key.recordId === record.id).length} Doctor Key(s)
+                  {formatNumber(sharedKeys.filter((key) => key.recordId === record.id).length)} {t("Doctor Key(s)")}
                 </span>
               }
             />
@@ -518,8 +532,8 @@ export default function InstitutionDashboard() {
           {filteredSharedRecords.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No Shared Records Yet</strong>
-              <span>Records granted to this institution will appear here.</span>
+              <strong>{t("No Shared Records Yet")}</strong>
+              <span>{t("Records granted to this institution will appear here.")}</span>
             </div>
           )}
         </section>
@@ -528,28 +542,28 @@ export default function InstitutionDashboard() {
       {activeTab === "audit" && (
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Institution Audit Timeline</h2>
+            <h2><ClipboardList size={18} />{t("Institution Audit Timeline")}</h2>
             <button className="icon-button with-label secondary" onClick={exportInstitutionAuditPdf} disabled={institutionAuditRows.length === 0}>
               <Download size={16} />
-              Export PDF
+              {t("Export PDF")}
             </button>
           </div>
           {institutionAuditRows.length > 0 ? (
             <div className="timeline">
               {institutionAuditRows.map((row, index) => (
                 <article className="timeline-item" key={`${row.action}-${row.target}-${index}`}>
-                  <strong>{row.action}</strong>
-                  <span>{row.target}</span>
-                  {row.detail && <small>{row.detail}</small>}
-                  <small>{row.timestamp.toLocaleString()}</small>
+                  <strong>{localizeText(row.action)}</strong>
+                  <span>{localizeText(row.target)}</span>
+                  {row.detail && <small>{localizeText(row.detail)}</small>}
+                  <small>{formatDate(row.timestamp)}</small>
                 </article>
               ))}
             </div>
           ) : (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No Audit Events Yet</strong>
-              <span>Membership, shared record, and encrypted key events will appear here.</span>
+              <strong>{t("No Audit Events Yet")}</strong>
+              <span>{t("Membership, shared record, and encrypted key events will appear here.")}</span>
             </div>
           )}
         </section>

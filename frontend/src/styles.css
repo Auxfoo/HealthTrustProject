@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700;800&display=swap");
+
 :root {
   --bg: #f5f8fb;
   --bg-elevated: #ffffff;
@@ -36,8 +38,10 @@
 }
 
 :root[data-language="ku"] {
-  font-family: "Noto Naskh Arabic", "Segoe UI", Tahoma, -apple-system, BlinkMacSystemFont, sans-serif;
-  line-height: 1.55;
+  font-family: Vazirmatn, "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-size: 15.8px;
+  font-weight: 450;
+  line-height: 1.62;
 }
 
 :root[data-language="ku"] body {
@@ -126,10 +130,10 @@ button,
   white-space: nowrap;
 }
 
-button > svg,
-.upload-button > svg,
-.icon-link > svg,
-.icon-button > svg {
+button>svg,
+.upload-button>svg,
+.icon-link>svg,
+.icon-button>svg {
   flex: 0 0 auto;
 }
 
@@ -327,7 +331,7 @@ th {
   justify-content: flex-end;
 }
 
-.nav-meta > span {
+.nav-meta>span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -416,7 +420,7 @@ th {
   padding: 2rem;
 }
 
-.connect-screen > svg {
+.connect-screen>svg {
   background: linear-gradient(135deg, var(--teal-soft), var(--primary-soft));
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
@@ -468,7 +472,7 @@ th {
   padding: 1.15rem;
 }
 
-.dashboard-header > div {
+.dashboard-header>div {
   min-width: 0;
 }
 
@@ -506,17 +510,20 @@ th {
 }
 
 :root[data-language="ku"] .dashboard-header h1 {
-  font-size: clamp(1.58rem, 3vw, 2.24rem);
+  font-size: clamp(1.48rem, 2.8vw, 2.12rem);
+  font-weight: 760;
 }
 
 :root[data-language="ku"] .connect-screen h1 {
-  font-size: clamp(2rem, 6vw, 4.2rem);
+  font-size: clamp(1.9rem, 5.5vw, 3.8rem);
+  font-weight: 760;
 }
 
 :root[data-language="ku"] .eyebrow {
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  font-weight: 700;
   letter-spacing: 0;
-  line-height: 1.6;
+  line-height: 1.55;
   margin-bottom: 0.42rem;
   text-transform: none;
   word-spacing: 0.04em;
@@ -553,6 +560,43 @@ th {
 :root[data-language="ku"] .stat-card strong {
   letter-spacing: 0;
   line-height: 1.45;
+  font-weight: 760;
+}
+
+:root[data-language="ku"] button,
+:root[data-language="ku"] .upload-button,
+:root[data-language="ku"] .icon-link,
+:root[data-language="ku"] .inline-check,
+:root[data-language="ku"] label,
+:root[data-language="ku"] .badge {
+  font-weight: 650;
+}
+
+:root[data-language="ku"] input,
+:root[data-language="ku"] select,
+:root[data-language="ku"] textarea {
+  font-size: 0.94rem;
+  line-height: 1.55;
+}
+
+:root[data-language="ku"] .tabs button,
+:root[data-language="ku"] .segmented button {
+  font-size: 0.9rem;
+  font-weight: 650;
+  line-height: 1.55;
+  min-height: 42px;
+  padding: 0.52rem 0.82rem;
+}
+
+:root[data-language="ku"] .panel-title-row h2,
+:root[data-language="ku"] .request-list h3,
+:root[data-language="ku"] .record-list h3,
+:root[data-language="ku"] .upload-panel h2,
+:root[data-language="ku"] .modal-header h2,
+:root[data-language="ku"] .history-list-header h3,
+:root[data-language="ku"] .result-card h2,
+:root[data-language="ku"] .info-stack h2 {
+  font-weight: 720;
 }
 
 .stat-grid {
@@ -629,15 +673,31 @@ th {
 
 .tabs button,
 .segmented button {
+  align-items: center;
   background: transparent;
   border: 0;
   box-shadow: none;
   color: var(--muted);
+  display: inline-flex;
   flex: 0 0 auto;
   font-weight: 750;
+  gap: 0.45rem;
   min-height: 40px;
   padding: 0.66rem 0.9rem;
   white-space: nowrap;
+}
+
+.tabs button>svg,
+.segmented button>svg {
+  color: currentColor;
+  flex-shrink: 0;
+  opacity: 0.78;
+}
+
+.tabs button.active>svg,
+.segmented button.active>svg {
+  color: var(--primary);
+  opacity: 1;
 }
 
 .tabs button:hover,
@@ -711,16 +771,53 @@ th {
   min-width: 0;
 }
 
-.panel-title-row > * {
+.panel-title-row>* {
   min-width: 0;
 }
 
 .panel-title-row h2,
+.panel-title-row h3,
 .request-list h3,
-.record-list h3 {
+.record-list h3,
+.history-list-header h3,
+.upload-panel h2,
+.info-stack h2,
+.result-card h2 {
+  align-items: center;
   color: var(--text-strong);
+  display: inline-flex;
+  gap: 0.55rem;
   letter-spacing: -0.02em;
   margin: 0;
+}
+
+.panel-title-row h2>svg,
+.panel-title-row h3>svg,
+.request-list h3>svg,
+.record-list h3>svg,
+.history-list-header h3>svg,
+.upload-panel h2>svg,
+.info-stack h2>svg,
+.result-card h2>svg {
+  background: linear-gradient(135deg, var(--primary-soft), var(--teal-soft));
+  border-radius: 10px;
+  color: var(--primary);
+  flex-shrink: 0;
+  height: 30px;
+  padding: 6px;
+  width: 30px;
+}
+
+:root[data-theme="dark"] .panel-title-row h2>svg,
+:root[data-theme="dark"] .panel-title-row h3>svg,
+:root[data-theme="dark"] .request-list h3>svg,
+:root[data-theme="dark"] .record-list h3>svg,
+:root[data-theme="dark"] .history-list-header h3>svg,
+:root[data-theme="dark"] .upload-panel h2>svg,
+:root[data-theme="dark"] .info-stack h2>svg,
+:root[data-theme="dark"] .result-card h2>svg {
+  background: rgba(10, 132, 255, 0.16);
+  color: #6cb6ff;
 }
 
 .split-panel {
@@ -800,19 +897,19 @@ th {
   min-width: 0;
 }
 
-.upload-status-main > svg,
-.access-status-main > svg {
+.upload-status-main>svg,
+.access-status-main>svg {
   color: var(--primary);
   flex: 0 0 auto;
 }
 
-.upload-status.success .upload-status-main > svg,
-.access-status.success .access-status-main > svg {
+.upload-status.success .upload-status-main>svg,
+.access-status.success .access-status-main>svg {
   color: var(--mint);
 }
 
-.upload-status.error .upload-status-main > svg,
-.access-status.error .access-status-main > svg {
+.upload-status.error .upload-status-main>svg,
+.access-status.error .access-status-main>svg {
   color: var(--danger);
 }
 
@@ -874,7 +971,7 @@ th {
 .button-row,
 .record-list {
   display: flex;
-  gap: 0.9rem;
+  gap: 1.1rem;
 }
 
 .button-row {
@@ -1006,7 +1103,7 @@ th {
   margin-bottom: 1rem;
 }
 
-.modal-header > div {
+.modal-header>div {
   min-width: 0;
 }
 
@@ -1034,13 +1131,13 @@ th {
 .doctor-list,
 .request-list {
   display: grid;
-  gap: 1rem;
+  gap: 1.1rem;
 }
 
 .history-list {
   align-content: start;
   display: grid;
-  gap: 0.85rem;
+  gap: 1.1rem;
 }
 
 .history-list-header {
@@ -1146,8 +1243,12 @@ th {
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
-.notifications-panel .panel-title-row {
-  margin-bottom: 1rem;
+.panel-title-row {
+  margin-bottom: 1.1rem;
+}
+
+.info-stack h2 {
+  margin-bottom: 0.5rem;
 }
 
 .request-row:hover,
@@ -1168,7 +1269,7 @@ th {
   min-width: 0;
 }
 
-.doctor-row > span {
+.doctor-row>span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -1488,19 +1589,48 @@ input[type="checkbox"]:disabled {
   text-align: right;
 }
 
-:root[dir="rtl"] input[readonly],
+:root[dir="rtl"] input[readonly] {
+  unicode-bidi: plaintext;
+}
+
 :root[dir="rtl"] .record-details span,
 :root[dir="rtl"] .modal-header span,
 :root[dir="rtl"] .request-row span,
 :root[dir="rtl"] .history-main span,
-:root[dir="rtl"] .doctor-row > span {
-  unicode-bidi: plaintext;
+:root[dir="rtl"] .doctor-row>span {
+  direction: rtl;
+  unicode-bidi: isolate;
+  text-align: right;
+}
+
+bdi {
+  unicode-bidi: isolate;
+}
+
+:root[dir="rtl"] bdi[dir="ltr"] {
+  display: inline-block;
+  direction: ltr;
+  text-align: left;
+  unicode-bidi: isolate;
+}
+
+:root {
+  --toastify-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", sans-serif;
+}
+
+:root[data-language="ku"] {
+  --toastify-font-family: Vazirmatn, "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
 }
 
 .Toastify__toast-container {
   bottom: 1rem;
   right: 1rem;
   width: min(390px, calc(100vw - 2rem));
+}
+
+:root[dir="rtl"] .Toastify__toast-container {
+  left: 1rem;
+  right: auto;
 }
 
 .healthtrust-toast {
@@ -1511,9 +1641,33 @@ input[type="checkbox"]:disabled {
   border-radius: var(--radius-sheet) !important;
   box-shadow: 0 20px 60px rgba(15, 35, 55, 0.2) !important;
   color: var(--text-strong) !important;
-  font-weight: 700;
+  font-weight: 600;
+  letter-spacing: -0.005em;
   min-height: 62px;
   overflow: hidden;
+}
+
+:root[data-language="ku"] .healthtrust-toast {
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.7;
+}
+
+.Toastify__toast-body {
+  align-items: center;
+  font-size: 0.95rem;
+}
+
+.Toastify__toast-body>div:last-child {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  overflow: visible;
+}
+
+:root[dir="rtl"] .Toastify__toast-body {
+  direction: rtl;
+  text-align: right;
 }
 
 :root[data-theme="dark"] .healthtrust-toast {
@@ -1539,6 +1693,7 @@ input[type="checkbox"]:disabled {
     opacity: 0;
     transform: translate3d(0, 18px, 0) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
@@ -1560,6 +1715,7 @@ input[type="checkbox"]:disabled {
 }
 
 @media (max-width: 860px) {
+
   .navbar,
   .dashboard-header,
   .record-card,
@@ -1720,9 +1876,9 @@ input[type="checkbox"]:disabled {
     align-items: stretch;
   }
 
-  .row-actions > *,
-  .record-actions > *,
-  .button-row > * {
+  .row-actions>*,
+  .record-actions>*,
+  .button-row>* {
     flex: 1 1 auto;
   }
 
@@ -1746,6 +1902,7 @@ input[type="checkbox"]:disabled {
 }
 
 @media (max-width: 420px) {
+
   button,
   .upload-button,
   .icon-link,
@@ -1764,7 +1921,7 @@ input[type="checkbox"]:disabled {
     justify-content: stretch;
   }
 
-  .nav-meta > span {
+  .nav-meta>span {
     grid-column: 1 / -1;
   }
 

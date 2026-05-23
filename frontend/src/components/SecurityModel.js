@@ -1,5 +1,6 @@
 import React from "react";
-import { BrainCircuit, Database, FileKey2, History, ShieldCheck } from "lucide-react";
+import { BrainCircuit, Database, FileKey2, History, Lock, ShieldCheck } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 const rows = [
   {
@@ -30,16 +31,17 @@ const rows = [
 ];
 
 export default function SecurityModel() {
+  const { t, localizeText } = useLanguage();
   return (
     <section className="panel request-list">
-      <h3>Security Model</h3>
+      <h3><Lock size={18} />{t("Security Model")}</h3>
       {rows.map(({ icon: Icon, title, text }) => (
         <article className="request-row" key={title}>
           <div>
             <strong>
-              <Icon size={16} /> {title}
+              <Icon size={16} /> {localizeText(title)}
             </strong>
-            <span>{text}</span>
+            <span>{localizeText(text)}</span>
           </div>
         </article>
       ))}

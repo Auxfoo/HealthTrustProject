@@ -1,6 +1,9 @@
 import React from "react";
+import { useLanguage } from "../i18n";
 
 export default function StatCard({ icon: Icon, label, value, accent }) {
+  const { t, localizeText } = useLanguage();
+
   return (
     <article className="stat-card">
       {Icon && (
@@ -9,8 +12,8 @@ export default function StatCard({ icon: Icon, label, value, accent }) {
         </div>
       )}
       <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
+        <span>{t(label)}</span>
+        <strong>{localizeText(value)}</strong>
       </div>
     </article>
   );

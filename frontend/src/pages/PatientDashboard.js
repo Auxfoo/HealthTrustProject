@@ -3,18 +3,24 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import {
   Archive,
+  Bell,
   Check,
   Clock3,
   Download,
   ExternalLink,
   FileKey2,
+  FilePlus2,
   FileText,
   History,
+  Inbox,
   LoaderCircle,
+  Lock,
+  NotebookPen,
   RefreshCw,
   Search,
   ShieldCheck,
   Upload,
+  UserRound,
   X,
 } from "lucide-react";
 import { useWallet } from "../context/WalletContext";
@@ -34,6 +40,20 @@ import { encryptFile, generateRandomKey } from "../utils/encryption";
 import { createAuthHeaders } from "../utils/auth";
 import { buildDoctorKeyEnvelope, storeKeyEnvelope } from "../utils/recordSharing";
 import { createHealthTrustPdf } from "../utils/pdfReport";
+import { useLanguage } from "../i18n";
+
+const patientTabs = [
+  { key: "records", label: "Records", icon: FileText },
+  { key: "archive", label: "Archive", icon: Archive },
+  { key: "consent", label: "Consent", icon: ShieldCheck },
+  { key: "requests", label: "Requests", icon: Inbox },
+  { key: "notes", label: "Notes", icon: NotebookPen },
+  { key: "documents", label: "Documents", icon: FilePlus2 },
+  { key: "profile", label: "Profile", icon: UserRound },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "audit", label: "Audit", icon: History },
+  { key: "security", label: "Security", icon: Lock },
+];
 
 function metadataKey(wallet) {
   return `healthtrust_record_metadata_${wallet?.toLowerCase()}`;
@@ -50,6 +70,7 @@ function saveLocalMetadata(wallet, recordId, data) {
 
 export default function PatientDashboard() {
   const { walletAddress, API_URL, userProfile, fetchProfile } = useWallet();
+  const { t, localizeText, formatDate, formatNumber } = useLanguage();
   const [records, setRecords] = useState([]);
   const [metadata, setMetadata] = useState({});
   const [keyRows, setKeyRows] = useState([]);
@@ -110,7 +131,7 @@ export default function PatientDashboard() {
             action: log.fragment.name,
             target: log.args.doctor || log.args.createdBy || log.args.institutionId?.toString() || "-",
             recordId: Number(log.args.recordId),
-            timestamp: new Date(Number(block.timestamp) * 1000).toLocaleString(),
+            timestamp: new Date(Number(block.timestamp) * 1000),
           };
         })
       );
@@ -118,21 +139,21 @@ export default function PatientDashboard() {
         action: request.requestType === "emergency" ? "EmergencyAccessRequested" : "AccessRequested",
         target: request.requesterWallet,
         recordId: request.recordId,
-        timestamp: new Date(request.createdAt).toLocaleString(),
+        timestamp: new Date(request.createdAt),
         detail: request.reason || request.status,
       }));
       const noteRows = notes.map((note) => ({
         action: "DoctorNoteAdded",
         target: note.doctorWallet,
         recordId: note.recordId,
-        timestamp: new Date(note.updatedAt || note.createdAt).toLocaleString(),
+        timestamp: new Date(note.updatedAt || note.createdAt),
         detail: note.status,
       }));
       const documentRows = documents.map((document) => ({
         action: "CareDocumentAdded",
         target: document.doctorWallet,
         recordId: document.recordId || "-",
-        timestamp: new Date(document.createdAt).toLocaleString(),
+        timestamp: new Date(document.createdAt),
         detail: document.title,
       }));
       const notificationResponse = await axios.get(`${API_URL}/api/notifications`, { headers });
@@ -140,7 +161,7 @@ export default function PatientDashboard() {
         action: `Notification: ${notification.title}`,
         target: notification.type,
         recordId: "-",
-        timestamp: new Date(notification.createdAt).toLocaleString(),
+        timestamp: new Date(notification.createdAt),
         detail: notification.message,
       }));
       const rows = [...chainRows, ...requestRows, ...noteRows, ...documentRows, ...notificationRows];
@@ -183,14 +204,14 @@ export default function PatientDashboard() {
   );
 
   const lastUpload = records.length
-    ? new Date(Math.max(...records.map((record) => Number(record.timestamp || 0))) * 1000).toLocaleDateString()
-    : "None";
+    ? formatDate(Math.max(...records.map((record) => Number(record.timestamp || 0))) * 1000, { hour: undefined, minute: undefined })
+    : t("None");
 
   async function uploadRecord(event) {
     const file = event.target.files?.[0];
     if (!file || uploadInProgress) return;
 
-    const toastId = toast.info("Encrypting record...", { autoClose: 3000 });
+    const toastId = toast.info(t("Encrypting record..."), { autoClose: 3000 });
     try {
       setUploadStatus({
         state: "working",
@@ -208,7 +229,7 @@ export default function PatientDashboard() {
         title: "Uploading encrypted file",
         detail: "Sending the encrypted file to IPFS storage.",
       });
-      toast.update(toastId, { render: "Pinning encrypted file to IPFS...", type: "info", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Pinning encrypted file to IPFS..."), type: "info", isLoading: false, autoClose: 3000 });
       const response = await axios.post(`${API_URL}/api/records/upload`, formData, {
         headers: await createAuthHeaders(walletAddress),
       });
@@ -218,7 +239,7 @@ export default function PatientDashboard() {
         title: "Waiting for MetaMask confirmation",
         detail: "Confirm the blockchain transaction in MetaMask.",
       });
-      toast.update(toastId, { render: "Confirming record on-chain...", type: "info", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Confirming record on-chain..."), type: "info", isLoading: false, autoClose: 3000 });
       const tx = await addRecord(response.data.cid);
       setUploadStatus({
         state: "working",
@@ -245,7 +266,7 @@ export default function PatientDashboard() {
         { recordId, ownerWallet: walletAddress, ...data },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.update(toastId, { render: "Record uploaded", type: "success", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Record uploaded"), type: "success", isLoading: false, autoClose: 3000 });
       await loadRecords();
       setUploadStatus({
         state: "success",
@@ -261,7 +282,7 @@ export default function PatientDashboard() {
         detail: typeof message === "string" ? message : JSON.stringify(message),
       });
       toast.update(toastId, {
-        render: typeof message === "string" ? message : "Upload failed",
+        render: typeof message === "string" ? message : t("Upload failed"),
         type: "error",
         isLoading: false,
         autoClose: 5000,
@@ -298,9 +319,9 @@ export default function PatientDashboard() {
         { headers: await createAuthHeaders(walletAddress) }
       );
       await fetchProfile(walletAddress);
-      toast.success("Medical profile saved");
+      toast.success(t("Medical profile saved"));
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Unable to save profile");
+      toast.error(error.response?.data?.message || error.message || t("Unable to save profile"));
     }
   }
 
@@ -322,12 +343,12 @@ export default function PatientDashboard() {
         },
         ...(careDocument.cid
           ? [
-              {
-                heading: "Storage Reference",
-                accent: "#0a84ff",
-                rows: [{ label: "IPFS CID", value: careDocument.cid }],
-              },
-            ]
+            {
+              heading: "Storage Reference",
+              accent: "#0a84ff",
+              rows: [{ label: "IPFS CID", value: careDocument.cid }],
+            },
+          ]
           : []),
       ],
       footer: "HealthTrust care document - prototype, not a clinical certification",
@@ -395,11 +416,11 @@ export default function PatientDashboard() {
         { status },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.success(status === "approved" && isDoctorAccess ? "Access granted and key shared" : `Request ${status}`);
+      toast.success(status === "approved" && isDoctorAccess ? t("Access granted and key shared") : localizeText(`Request ${status}`));
       await loadRecords();
       if (activeTab === "audit") await loadAuditTrail();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.reason || error.message || "Unable to update request");
+      toast.error(error.response?.data?.message || error.reason || error.message || t("Unable to update request"));
     }
   }
 
@@ -415,19 +436,19 @@ export default function PatientDashboard() {
       <>
         <div className="toolbar">
           <Search size={17} />
-          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search records or CID" />
-          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter category">
-            <option value="all">All categories</option>
-            <option value="lab">Lab</option>
-            <option value="prescription">Prescription</option>
-            <option value="diagnosis">Diagnosis</option>
-            <option value="imaging">Imaging</option>
-            <option value="other">Other</option>
+          <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Search records or CID")} />
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label={t("Filter category")}>
+            <option value="all">{t("All categories")}</option>
+            <option value="lab">{t("Lab")}</option>
+            <option value="prescription">{t("Prescription")}</option>
+            <option value="diagnosis">{t("Diagnosis")}</option>
+            <option value="imaging">{t("Imaging")}</option>
+            <option value="other">{t("Other")}</option>
           </select>
-          <select value={flagFilter} onChange={(event) => setFlagFilter(event.target.value)} aria-label="Filter flags">
-            <option value="all">All flags</option>
-            <option value="important">Important</option>
-            <option value="emergency">Emergency</option>
+          <select value={flagFilter} onChange={(event) => setFlagFilter(event.target.value)} aria-label={t("Filter flags")}>
+            <option value="all">{t("All flags")}</option>
+            <option value="important">{t("Important")}</option>
+            <option value="emergency">{t("Emergency")}</option>
           </select>
         </div>
         <section className="record-list">
@@ -450,7 +471,7 @@ export default function PatientDashboard() {
                         checked={Boolean(meta.important)}
                         onChange={(event) => saveRecordMetadata(record.id, { important: event.target.checked })}
                       />
-                      Important
+                      {t("Important")}
                     </label>
                     <label className="inline-check">
                       <input
@@ -458,7 +479,7 @@ export default function PatientDashboard() {
                         checked={Boolean(meta.emergency)}
                         onChange={(event) => saveRecordMetadata(record.id, { emergency: event.target.checked })}
                       />
-                      Emergency
+                      {t("Emergency")}
                     </label>
                   </>
                 }
@@ -468,8 +489,8 @@ export default function PatientDashboard() {
           {filteredRecords.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>{emptyTitle}</strong>
-              <span>{emptyMessage}</span>
+              <strong>{t(emptyTitle)}</strong>
+              <span>{t(emptyMessage)}</span>
             </div>
           )}
         </section>
@@ -481,41 +502,41 @@ export default function PatientDashboard() {
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Patient Workspace</p>
-          <h1>Records and Access</h1>
+          <p className="eyebrow">{t("Patient Workspace")}</p>
+          <h1>{t("Records and Access")}</h1>
         </div>
         <div className="header-actions">
-          <button className="icon-button secondary" onClick={loadRecords} aria-label="Refresh records">
+          <button className="icon-button secondary" onClick={loadRecords} aria-label={t("Refresh records")}>
             <RefreshCw size={16} />
           </button>
         </div>
       </div>
 
       <section className="stat-grid">
-        <StatCard icon={FileText} label="Records" value={records.length} />
-        <StatCard icon={ShieldCheck} label="Shared Keys" value={keyRows.length} accent="green" />
-        <StatCard icon={History} label="Audit Events" value={auditTrail.length || "Load tab"} accent="amber" />
-        <StatCard icon={Clock3} label="Latest Upload" value={lastUpload} />
+        <StatCard icon={FileText} label={t("Records")} value={records.length} />
+        <StatCard icon={ShieldCheck} label={t("Shared Keys")} value={keyRows.length} accent="green" />
+        <StatCard icon={History} label={t("Audit Events")} value={auditTrail.length || t("Load tab")} accent="amber" />
+        <StatCard icon={Clock3} label={t("Latest Upload")} value={lastUpload} />
       </section>
 
       <section className="panel upload-panel">
         <div>
-          <h2>Upload Details</h2>
-          <p>These details will be saved with the next record you upload.</p>
+          <h2>{t("Upload Details")}</h2>
+          <p>{t("These details will be saved with the next record you upload.")}</p>
         </div>
         <div className="metadata-panel">
           <label>
-            Category
+            {t("Category")}
             <select value={uploadMeta.category} onChange={(event) => setUploadMeta({ ...uploadMeta, category: event.target.value })}>
-              <option value="lab">Lab</option>
-              <option value="prescription">Prescription</option>
-              <option value="diagnosis">Diagnosis</option>
-              <option value="imaging">Imaging</option>
-              <option value="other">Other</option>
+              <option value="lab">{t("Lab")}</option>
+              <option value="prescription">{t("Prescription")}</option>
+              <option value="diagnosis">{t("Diagnosis")}</option>
+              <option value="imaging">{t("Imaging")}</option>
+              <option value="other">{t("Other")}</option>
             </select>
           </label>
           <label>
-            Provider
+            {t("Provider")}
             <input value={uploadMeta.provider} onChange={(event) => setUploadMeta({ ...uploadMeta, provider: event.target.value })} />
           </label>
           <label className="inline-check">
@@ -525,11 +546,11 @@ export default function PatientDashboard() {
               onChange={(event) => setUploadMeta({ ...uploadMeta, emergency: event.target.checked })}
               disabled={uploadInProgress}
             />
-            Emergency record
+            {t("Emergency record")}
           </label>
           <label className={`icon-button with-label upload-button ${uploadInProgress ? "is-disabled" : ""}`}>
             {uploadInProgress ? <LoaderCircle className="spin-icon" size={16} /> : <Upload size={16} />}
-            {uploadInProgress ? "Uploading..." : "Upload Record"}
+            {uploadInProgress ? t("Uploading...") : t("Upload Record")}
             <input type="file" accept="application/pdf,image/*" onChange={uploadRecord} disabled={uploadInProgress} hidden />
           </label>
         </div>
@@ -540,14 +561,14 @@ export default function PatientDashboard() {
               {uploadStatus.state === "success" && <Check size={18} />}
               {uploadStatus.state === "error" && <X size={18} />}
               <div>
-                <strong>{uploadStatus.title}</strong>
-                <span>{uploadStatus.detail}</span>
+                <strong>{localizeText(uploadStatus.title)}</strong>
+                <span>{localizeText(uploadStatus.detail)}</span>
               </div>
             </div>
             {uploadStatus.txHash && (
               <a className="icon-link compact" href={`https://sepolia.etherscan.io/tx/${uploadStatus.txHash}`} target="_blank" rel="noreferrer">
                 <ExternalLink size={15} />
-                View tx
+                {t("View tx")}
               </a>
             )}
           </div>
@@ -555,36 +576,41 @@ export default function PatientDashboard() {
       </section>
 
       <div className="tabs">
-        {["records", "archive", "consent", "requests", "notes", "documents", "profile", "notifications", "audit", "security"].map((tab) => (
-          <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-            {tab === "audit" ? "Audit" : tab[0].toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+        {patientTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.key} className={activeTab === tab.key ? "active" : ""} onClick={() => setActiveTab(tab.key)}>
+              {Icon && <Icon size={16} />}
+              {t(tab.label)}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "records" && renderRecords()}
       {activeTab === "archive" && renderRecords()}
       {activeTab === "consent" && (
         <section className="panel request-list">
-          <h3>Patient Consent Summary</h3>
+          <h3><ShieldCheck size={18} />{t("Patient Consent Summary")}</h3>
           {records.map((record) => {
             const meta = metadata[record.id] || {};
             const recordKeys = keyRows.filter((key) => key.recordId === record.id);
             return (
               <article className="request-row" key={record.id}>
                 <div>
-                  <strong>{meta.title || meta.filename || `Record #${record.id}`}</strong>
-                  <span>Category: {meta.category || "other"} {meta.emergency ? "Emergency-visible" : ""}</span>
-                  <small>{recordKeys.length} active encrypted key envelope(s)</small>
+                  <strong>{meta.title || meta.filename || localizeText(`Record #${record.id}`)}</strong>
+                  <span>{localizeText(`Category: ${meta.category || "other"} ${meta.emergency ? "Emergency-visible" : ""}`)}</span>
+                  <small>{localizeText(`${recordKeys.length} active encrypted key envelope(s)`)}</small>
                   {recordKeys.map((key) => (
                     <span key={key.id}>
-                      {key.accessType === "institution" ? `Institution #${key.accessTarget}` : key.recipientWallet} - key shared yes - {new Date(key.updatedAt).toLocaleString()}
+                      {key.accessType === "institution" ? localizeText(`Institution #${key.accessTarget}`) : <bdi dir="ltr">{key.recipientWallet}</bdi>}
+                      {" - "}{localizeText("key shared yes")}{" - "}{formatDate(key.updatedAt)}
                     </span>
                   ))}
                 </div>
                 <button className="icon-button secondary" onClick={() => setSelectedRecord(record)}>
                   <FileKey2 size={16} />
-                  Manage
+                  {t("Manage")}
                 </button>
               </article>
             );
@@ -593,7 +619,7 @@ export default function PatientDashboard() {
       )}
       {activeTab === "requests" && (
         <section className="panel request-list">
-          <h3>Access Requests</h3>
+          <h3><Inbox size={18} />{t("Access Requests")}</h3>
           {requests.map((request) => {
             const hasSharedKey = keyRows.some(
               (key) => key.recordId === request.recordId && key.recipientWallet?.toLowerCase() === request.requesterWallet?.toLowerCase()
@@ -604,22 +630,22 @@ export default function PatientDashboard() {
             return (
               <article className={`request-row ${request.requestType === "emergency" ? "unread" : ""}`} key={request.id}>
                 <div>
-                  <strong>{request.requestType === "emergency" ? "Emergency access request" : "Access request"} for record #{request.recordId}</strong>
-                  <span>{request.requesterWallet}</span>
-                  <small>Status: {request.status} - key shared: {hasSharedKey ? "yes" : "no"}</small>
+                  <strong>{localizeText(`${request.requestType === "emergency" ? "Emergency access request" : "Access request"} for record #${request.recordId}`)}</strong>
+                  <span><bdi dir="ltr">{request.requesterWallet}</bdi></span>
+                  <small>{localizeText(`Status: ${request.status} - key shared: ${hasSharedKey ? "yes" : "no"}`)}</small>
                   {request.reason && <p>{request.reason}</p>}
                 </div>
                 <div className="row-actions">
                   {canCompleteGrant && (
                     <button onClick={() => updateRequest(request, "approved")}>
                       <Check size={16} />
-                      {request.status === "approved" ? "Complete grant" : "Approve"}
+                      {request.status === "approved" ? t("Complete grant") : t("Approve")}
                     </button>
                   )}
                   {request.status === "pending" && (
                     <button className="secondary" onClick={() => updateRequest(request, "rejected")}>
                       <X size={16} />
-                      Reject
+                      {t("Reject")}
                     </button>
                   )}
                 </div>
@@ -629,8 +655,8 @@ export default function PatientDashboard() {
           {requests.length === 0 && (
             <div className="empty-state">
               <ShieldCheck size={28} />
-              <strong>No Access Requests</strong>
-              <span>Doctor and emergency access requests will appear here.</span>
+              <strong>{t("No Access Requests")}</strong>
+              <span>{t("Doctor and emergency access requests will appear here.")}</span>
             </div>
           )}
         </section>
@@ -641,21 +667,21 @@ export default function PatientDashboard() {
             <article className="request-row" key={document.id}>
               <div>
                 <strong>{document.title}</strong>
-                <span>{document.documentType} from {document.doctorWallet}</span>
-                <small>{new Date(document.createdAt).toLocaleString()}</small>
+                <span>{localizeText(`${document.documentType} from`)} {document.doctorWallet}</span>
+                <small>{formatDate(document.createdAt)}</small>
                 {document.content && <p>{document.content}</p>}
               </div>
               <button className="icon-button with-label" onClick={() => downloadCarePdf(document)}>
                 <Download size={16} />
-                PDF
+                {t("PDF")}
               </button>
             </article>
           ))}
           {documents.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No Care Documents</strong>
-              <span>Documents sent by doctors will appear here.</span>
+              <strong>{t("No Care Documents")}</strong>
+              <span>{t("Documents sent by doctors will appear here.")}</span>
             </div>
           )}
         </section>
@@ -665,9 +691,9 @@ export default function PatientDashboard() {
           {notes.map((note) => (
             <article className="request-row" key={note.id}>
               <div>
-                <strong>Record #{note.recordId}</strong>
-                <span>{note.status}</span>
-                <small>Doctor: {note.doctorWallet}</small>
+                <strong>{localizeText(`Record #${note.recordId}`)}</strong>
+                <span>{localizeText(note.status)}</span>
+                <small>{t("Doctor")}: {note.doctorWallet}</small>
                 {note.note && <p>{note.note}</p>}
               </div>
             </article>
@@ -675,8 +701,8 @@ export default function PatientDashboard() {
           {notes.length === 0 && (
             <div className="empty-state">
               <FileText size={28} />
-              <strong>No Doctor Notes</strong>
-              <span>Notes added by doctors will appear here.</span>
+              <strong>{t("No Doctor Notes")}</strong>
+              <span>{t("Notes added by doctors will appear here.")}</span>
             </div>
           )}
         </section>
@@ -686,11 +712,11 @@ export default function PatientDashboard() {
           <form className="form-grid" onSubmit={saveProfile}>
             {Object.keys(profile).map((field) => (
               <label key={field}>
-                {field}
+                {t(field)}
                 <input value={profile[field] || ""} onChange={(event) => setProfile({ ...profile, [field]: event.target.value })} />
               </label>
             ))}
-            <button>Save profile</button>
+            <button>{t("Save profile")}</button>
           </form>
         </section>
       )}
@@ -698,28 +724,28 @@ export default function PatientDashboard() {
       {activeTab === "audit" && (
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Audit Timeline</h2>
+            <h2><History size={18} />{t("Audit Timeline")}</h2>
             <button className="icon-button with-label secondary" onClick={exportAuditPdf} disabled={auditTrail.length === 0}>
               <Download size={16} />
-              Export PDF
+              {t("Export PDF")}
             </button>
           </div>
           {auditTrail.length > 0 ? (
             <div className="timeline">
               {auditTrail.map((row, index) => (
                 <article className="timeline-item" key={`${row.action}-${row.recordId}-${index}`}>
-                  <strong>{row.action}</strong>
-                  <span>Record #{row.recordId} - {row.target}</span>
-                  {row.detail && <small>{row.detail}</small>}
-                  <small>{row.timestamp}</small>
+                  <strong>{localizeText(row.action)}</strong>
+                  <span>{localizeText(`Record #${row.recordId}`)} - {localizeText(row.target)}</span>
+                  {row.detail && <small>{localizeText(row.detail)}</small>}
+                  <small>{formatDate(row.timestamp)}</small>
                 </article>
               ))}
             </div>
           ) : (
             <div className="empty-state">
               <History size={28} />
-              <strong>No history</strong>
-              <span>Access grants, revokes, and patient-created records will appear here.</span>
+              <strong>{t("No history")}</strong>
+              <span>{t("Access grants, revokes, and patient-created records will appear here.")}</span>
             </div>
           )}
         </section>

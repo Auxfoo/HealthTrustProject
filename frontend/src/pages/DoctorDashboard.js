@@ -3,9 +3,16 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import {
   AlertTriangle,
+  Bell,
+  BrainCircuit,
+  Building2,
+  ClipboardList,
   Download,
   FilePlus2,
   FileSearch,
+  History,
+  Lock,
+  NotebookPen,
   RefreshCw,
   Search,
   Stethoscope,
@@ -24,6 +31,21 @@ import { decryptFile } from "../utils/encryption";
 import { getAllRecords, getBrowserProvider, getContract, hasAccess } from "../utils/contractHelper";
 import { createAuthHeaders } from "../utils/auth";
 import { decryptRecordKey } from "../utils/keySharing";
+import { useLanguage } from "../i18n";
+
+const doctorTabs = [
+  { key: "records", label: "Records", icon: FileSearch },
+  { key: "patients", label: "Patients", icon: UsersRound },
+  { key: "emergency", label: "Emergency", icon: AlertTriangle },
+  { key: "notes", label: "Notes", icon: NotebookPen },
+  { key: "documents", label: "Documents", icon: FilePlus2 },
+  { key: "membership", label: "Membership", icon: Building2 },
+  { key: "prediction", label: "Prediction", icon: BrainCircuit },
+  { key: "history", label: "History", icon: History },
+  { key: "audit", label: "Audit", icon: ClipboardList },
+  { key: "notifications", label: "Notifications", icon: Bell },
+  { key: "security", label: "Security", icon: Lock },
+];
 
 const emptyPredictionValues = {
   gender: "Female",
@@ -110,6 +132,7 @@ function formatLabel(value) {
 
 export default function DoctorDashboard() {
   const { walletAddress, API_URL, userProfile } = useWallet();
+  const { t, localizeText, formatDate, formatNumber } = useLanguage();
   const [activeTab, setActiveTab] = useState("records");
   const [records, setRecords] = useState([]);
   const [metadata, setMetadata] = useState({});
@@ -173,7 +196,7 @@ export default function DoctorDashboard() {
         return response.data;
       })
       .catch((error) => {
-        toast.error(error.response?.data?.message || error.message || "Unable to load institutions");
+        toast.error(error.response?.data?.message || error.message || t("Unable to load institutions"));
         return [];
       })
       .finally(() => setLoadingInstitutions(false));
@@ -184,7 +207,7 @@ export default function DoctorDashboard() {
         return response.data;
       })
       .catch((error) => {
-        toast.error(error.response?.data?.message || error.message || "Unable to load membership requests");
+        toast.error(error.response?.data?.message || error.message || t("Unable to load membership requests"));
         return [];
       });
 
@@ -364,7 +387,7 @@ export default function DoctorDashboard() {
   }, [availableInstitutions, joinForm.institutionId]);
 
   async function downloadRecord(record) {
-    const toastId = toast.info("Fetching encrypted record...", { autoClose: 3000 });
+    const toastId = toast.info(t("Fetching encrypted record..."), { autoClose: 3000 });
     try {
       const keyResponse = await axios.get(`${API_URL}/api/record-keys/${record.id}`, {
         headers: await createAuthHeaders(walletAddress),
@@ -386,7 +409,7 @@ export default function DoctorDashboard() {
         setPredictionValues(extractedValues);
         setPredictionPatientWallet(record.uploadedBy || "");
         setActiveTab("prediction");
-        toast.success("Prediction form auto-filled from PDF");
+        toast.success(t("Prediction form auto-filled from PDF"));
       }
 
       const mimeType = isPdf ? "application/pdf" : isPng ? "image/png" : "image/jpeg";
@@ -398,16 +421,16 @@ export default function DoctorDashboard() {
       link.download = `healthtrust-record-${record.id}.${extension}`;
       link.click();
       URL.revokeObjectURL(url);
-      toast.update(toastId, { render: "Record decrypted", type: "success", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Record decrypted"), type: "success", isLoading: false, autoClose: 3000 });
     } catch (error) {
-      toast.update(toastId, { render: error.response?.data?.message || error.message, type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.response?.data?.message || error.message), type: "error", isLoading: false, autoClose: 5000 });
     }
   }
 
   async function requestMembership(event) {
     event.preventDefault();
     if (!joinForm.institutionId) {
-      toast.error("No available institution to request");
+      toast.error(t("No available institution to request"));
       return;
     }
     try {
@@ -416,22 +439,22 @@ export default function DoctorDashboard() {
         { institutionId: Number(joinForm.institutionId), message: joinForm.message },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.success("Membership request sent");
+      toast.success(t("Membership request sent"));
       setJoinForm((current) => ({ ...current, message: "" }));
       await loadAccessibleRecords();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Unable to send membership request");
+      toast.error(error.response?.data?.message || error.message || t("Unable to send membership request"));
     }
   }
 
   async function requestEmergencyAccess(event) {
     event.preventDefault();
     if (!ethers.isAddress(emergencyForm.patientWallet)) {
-      toast.error("Enter a valid patient wallet address");
+      toast.error(t("Enter a valid patient wallet address"));
       return;
     }
     if (!emergencyForm.recordId || !emergencyForm.reason.trim()) {
-      toast.error("Record ID and emergency reason are required");
+      toast.error(t("Record ID and emergency reason are required"));
       return;
     }
     try {
@@ -445,10 +468,10 @@ export default function DoctorDashboard() {
         },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.success("Emergency access request sent");
+      toast.success(t("Emergency access request sent"));
       setEmergencyForm({ patientWallet: "", recordId: "", reason: "" });
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Unable to request emergency access");
+      toast.error(error.response?.data?.message || error.message || t("Unable to request emergency access"));
     }
   }
 
@@ -456,11 +479,11 @@ export default function DoctorDashboard() {
     event.preventDefault();
     const selectedRecord = records.find((record) => String(record.id) === String(noteForm.recordId));
     if (!selectedRecord) {
-      toast.error("Choose an accessible record");
+      toast.error(t("Choose an accessible record"));
       return;
     }
     if (!ethers.isAddress(noteForm.patientWallet)) {
-      toast.error("Enter a valid patient wallet address");
+      toast.error(t("Enter a valid patient wallet address"));
       return;
     }
     try {
@@ -469,11 +492,11 @@ export default function DoctorDashboard() {
         { ...noteForm, recordId: Number(noteForm.recordId) },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.success("Note saved");
+      toast.success(t("Note saved"));
       setNoteForm({ recordId: "", patientWallet: "", status: "reviewed", note: "" });
       await loadAccessibleRecords();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || "Unable to save note");
+      toast.error(error.response?.data?.message || error.message || t("Unable to save note"));
     }
   }
 
@@ -481,25 +504,25 @@ export default function DoctorDashboard() {
     event.preventDefault();
     const selectedRecord = records.find((record) => String(record.id) === String(docForm.sourceRecordId));
     if (!selectedRecord) {
-      toast.error("Choose an accessible record");
+      toast.error(t("Choose an accessible record"));
       return;
     }
     if (!ethers.isAddress(docForm.patientWallet)) {
-      toast.error("Enter a valid patient wallet address");
+      toast.error(t("Enter a valid patient wallet address"));
       return;
     }
-    const toastId = toast.info("Creating care document...", { autoClose: 3000 });
+    const toastId = toast.info(t("Creating care document..."), { autoClose: 3000 });
     try {
       await axios.post(
         `${API_URL}/api/doctor-documents`,
         { ...docForm, sourceRecordId: undefined, recordId: Number(docForm.sourceRecordId), cid: "", encrypted: false },
         { headers: await createAuthHeaders(walletAddress) }
       );
-      toast.update(toastId, { render: "Care document sent", type: "success", isLoading: false, autoClose: 3000 });
+      toast.update(toastId, { render: t("Care document sent"), type: "success", isLoading: false, autoClose: 3000 });
       setDocForm({ sourceRecordId: "", patientWallet: "", documentType: "prescription", title: "", content: "" });
       await loadAccessibleRecords();
     } catch (error) {
-      toast.update(toastId, { render: error.response?.data?.message || error.reason || error.message, type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.response?.data?.message || error.reason || error.message), type: "error", isLoading: false, autoClose: 5000 });
     }
   }
 
@@ -507,46 +530,50 @@ export default function DoctorDashboard() {
     <main className="dashboard">
       <div className="dashboard-header">
         <div>
-          <p className="eyebrow">Doctor Workspace</p>
-          <h1>Care Review</h1>
+          <p className="eyebrow">{t("Doctor Workspace")}</p>
+          <h1>{t("Care Review")}</h1>
         </div>
-        <button className="icon-button secondary" onClick={loadAccessibleRecords} aria-label="Refresh accessible records">
+        <button className="icon-button secondary" onClick={loadAccessibleRecords} aria-label={t("Refresh accessible records")}>
           <RefreshCw size={16} />
         </button>
       </div>
 
       <section className="stat-grid">
-        <StatCard icon={FileSearch} label="Accessible Records" value={records.length} />
-        <StatCard icon={UsersRound} label="Patients" value={patientCount} accent="green" />
-        <StatCard icon={Stethoscope} label="Latest risk" value={riskLabel} accent="amber" />
-        <StatCard icon={FilePlus2} label="Care Docs" value={documents.length} />
+        <StatCard icon={FileSearch} label={t("Accessible Records")} value={records.length} />
+        <StatCard icon={UsersRound} label={t("Patients")} value={patientCount} accent="green" />
+        <StatCard icon={Stethoscope} label={t("Latest risk")} value={riskLabel} accent="amber" />
+        <StatCard icon={FilePlus2} label={t("Care Docs")} value={documents.length} />
       </section>
 
       <div className="tabs">
-        {["records", "patients", "emergency", "notes", "documents", "membership", "prediction", "history", "audit", "notifications", "security"].map((tab) => (
-          <button key={tab} className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>
-            {tab[0].toUpperCase() + tab.slice(1)}
-          </button>
-        ))}
+        {doctorTabs.map((tab) => {
+          const Icon = tab.icon;
+          return (
+            <button key={tab.key} className={activeTab === tab.key ? "active" : ""} onClick={() => setActiveTab(tab.key)}>
+              {Icon && <Icon size={16} />}
+              {t(tab.label)}
+            </button>
+          );
+        })}
       </div>
 
       {activeTab === "records" && (
         <>
           <div className="toolbar">
             <Search size={17} />
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search records or patient" />
-            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter category">
-              <option value="all">All categories</option>
-              <option value="lab">Lab</option>
-              <option value="prescription">Prescription</option>
-              <option value="diagnosis">Diagnosis</option>
-              <option value="imaging">Imaging</option>
-              <option value="other">Other</option>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Search records or patient")} />
+            <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label={t("Filter category")}>
+              <option value="all">{t("All categories")}</option>
+              <option value="lab">{t("Lab")}</option>
+              <option value="prescription">{t("Prescription")}</option>
+              <option value="diagnosis">{t("Diagnosis")}</option>
+              <option value="imaging">{t("Imaging")}</option>
+              <option value="other">{t("Other")}</option>
             </select>
-            <select value={flagFilter} onChange={(event) => setFlagFilter(event.target.value)} aria-label="Filter flags">
-              <option value="all">All flags</option>
-              <option value="important">Important</option>
-              <option value="emergency">Emergency</option>
+            <select value={flagFilter} onChange={(event) => setFlagFilter(event.target.value)} aria-label={t("Filter flags")}>
+              <option value="all">{t("All flags")}</option>
+              <option value="important">{t("Important")}</option>
+              <option value="emergency">{t("Emergency")}</option>
             </select>
           </div>
           <section className="record-list">
@@ -558,7 +585,7 @@ export default function DoctorDashboard() {
                 actions={
                   <button className="icon-button with-label" onClick={() => downloadRecord(record)}>
                     <Download size={16} />
-                    View
+                    {t("View")}
                   </button>
                 }
               />
@@ -566,7 +593,7 @@ export default function DoctorDashboard() {
             {filteredRecords.length === 0 && (
               <div className="empty-state">
                 <FileSearch size={28} />
-                <strong>No Accessible Records</strong>
+                <strong>{t("No Accessible Records")}</strong>
               </div>
             )}
           </section>
@@ -575,7 +602,7 @@ export default function DoctorDashboard() {
 
       {activeTab === "patients" && (
         <section className="panel request-list">
-          <h3>Patient Workspace</h3>
+          <h3><UsersRound size={18} />{t("Patient Workspace")}</h3>
           {Object.entries(patientGroups).map(([wallet, patientRecords]) => {
             const profile = patientProfiles[wallet];
             const patientNotes = notes.filter((note) => note.patientWallet?.toLowerCase() === wallet);
@@ -585,18 +612,19 @@ export default function DoctorDashboard() {
               <article className="request-row" key={wallet}>
                 <div>
                   <strong>
-                    <UserRound size={16} /> {profile?.name || "Patient"}
+                    <UserRound size={16} /> {profile?.name || t("Patient")}
                   </strong>
-                  <span>{wallet}</span>
-                  <small>
-                    {patientRecords.length} record(s) - {patientNotes.length} note(s) - {patientDocs.length} care document(s) -{" "}
-                    {patientPredictions.length} prediction(s)
-                  </small>
+                  <span><bdi dir="ltr">{wallet}</bdi></span>
+                  <small>{localizeText(`${patientRecords.length} record(s)`)}</small>
+                  <small>{localizeText(`${patientNotes.length} note(s)`)}</small>
+                  <small>{localizeText(`${patientDocs.length} care document(s)`)}</small>
+                  <small>{localizeText(`${patientPredictions.length} prediction(s)`)}</small>
                   {profile && (
-                    <span>
-                      Blood: {profile.bloodType || "N/A"} - Allergies: {profile.allergies || "N/A"} - Conditions:{" "}
-                      {profile.chronicConditions || "N/A"}
-                    </span>
+                    <>
+                      <span>{t("Blood type")}: {profile.bloodType || t("N/A")}</span>
+                      <span>{t("Allergies")}: {profile.allergies || t("N/A")}</span>
+                      <span>{t("Chronic conditions")}: {profile.chronicConditions || t("N/A")}</span>
+                    </>
                   )}
                 </div>
               </article>
@@ -605,8 +633,8 @@ export default function DoctorDashboard() {
           {Object.keys(patientGroups).length === 0 && (
             <div className="empty-state">
               <UserRound size={28} />
-              <strong>No Patient Workspace Yet</strong>
-              <span>Patients appear here after they grant you decryptable record access.</span>
+              <strong>{t("No Patient Workspace Yet")}</strong>
+              <span>{t("Patients appear here after they grant you decryptable record access.")}</span>
             </div>
           )}
         </section>
@@ -616,7 +644,7 @@ export default function DoctorDashboard() {
         <section className="panel split-panel">
           <form className="form-grid" onSubmit={requestEmergencyAccess}>
             <label>
-              Emergency-visible record
+              {t("Emergency-visible record")}
               <select
                 value={emergencyForm.recordId}
                 onChange={(event) => {
@@ -630,20 +658,20 @@ export default function DoctorDashboard() {
                 required
                 disabled={emergencyRecords.length === 0}
               >
-                <option value="">Choose emergency record</option>
+                <option value="">{t("Choose emergency record")}</option>
                 {emergencyRecords.map((record) => (
                   <option key={record.id} value={record.id}>
-                    Record #{record.id} - {record.metadata?.title || record.metadata?.filename || record.uploadedBy}
+                    {localizeText(`Record #${record.id}`)} - {record.metadata?.title || record.metadata?.filename || record.uploadedBy}
                   </option>
                 ))}
               </select>
             </label>
             <label>
-              Patient wallet
+              {t("Patient wallet")}
               <input value={emergencyForm.patientWallet} readOnly required />
             </label>
             <label>
-              Clinical reason
+              {t("Clinical reason")}
               <textarea
                 value={emergencyForm.reason}
                 onChange={(event) => setEmergencyForm({ ...emergencyForm, reason: event.target.value })}
@@ -652,31 +680,29 @@ export default function DoctorDashboard() {
             </label>
             <button disabled={!emergencyForm.recordId}>
               <AlertTriangle size={16} />
-              Request emergency access
+              {t("Request emergency access")}
             </button>
           </form>
           <div className="request-list">
             <div className="notice">
-              <strong>Emergency mode</strong>
-              <span>
-                Choose a record the patient marked emergency-visible. This sends a clearly labeled request and notification;
-                the patient still controls final on-chain access and encrypted key sharing.
-              </span>
+              <strong>{t("Emergency mode")}</strong>
+              <span>{t("Choose a record the patient marked emergency-visible. This sends a clearly labeled request and notification; the patient still controls final on-chain access and encrypted key sharing.")}</span>
             </div>
             {emergencyRecords.map((record) => (
               <article className="request-row" key={record.id}>
                 <div>
-                  <strong>{record.metadata?.title || record.metadata?.filename || `Record #${record.id}`}</strong>
-                  <span>Record #{record.id} - {record.uploadedBy}</span>
-                  <small>{record.metadata?.category || "other"}</small>
+                  <strong>{record.metadata?.title || record.metadata?.filename || localizeText(`Record #${record.id}`)}</strong>
+                  <span>{localizeText(`Record #${record.id}`)}</span>
+                  <span><bdi dir="ltr">{record.uploadedBy}</bdi></span>
+                  <small>{localizeText(record.metadata?.category || "other")}</small>
                 </div>
               </article>
             ))}
             {emergencyRecords.length === 0 && (
               <div className="empty-state">
                 <AlertTriangle size={28} />
-                <strong>No Emergency-Visible Records</strong>
-                <span>Records patients mark as emergency will appear here.</span>
+                <strong>{t("No Emergency-Visible Records")}</strong>
+                <span>{t("Records patients mark as emergency will appear here.")}</span>
               </div>
             )}
           </div>
@@ -704,7 +730,7 @@ export default function DoctorDashboard() {
                 <option value="">Choose a record</option>
                 {records.map((record) => (
                   <option key={record.id} value={record.id}>
-                    Record #{record.id} - {metadata[record.id]?.title || metadata[record.id]?.filename || record.uploadedBy}
+                    {localizeText(`Record #${record.id}`)} - {metadata[record.id]?.title || metadata[record.id]?.filename || record.uploadedBy}
                   </option>
                 ))}
               </select>
@@ -729,26 +755,26 @@ export default function DoctorDashboard() {
           </form>
           <div className="history-list">
             <div className="history-list-header">
-              <h3>Notes History</h3>
-              <span>{notes.length} Total</span>
+              <h3><NotebookPen size={18} />{t("Notes History")}</h3>
+              <span>{formatNumber(notes.length)} {t("Total")}</span>
             </div>
             {notes.map((note) => (
               <article className="history-row" key={note.id}>
                 <div className="history-main">
-                  <strong>Record #{note.recordId}</strong>
-                  <span>{note.note || "No note text provided."}</span>
+                  <strong>{localizeText(`Record #${note.recordId}`)}</strong>
+                  <span>{note.note || t("No note text provided.")}</span>
                 </div>
                 <div className="history-meta">
-                  <span className="badge status-badge">{formatLabel(note.status)}</span>
-                  <small>{new Date(note.updatedAt || note.createdAt).toLocaleString()}</small>
+                  <span className="badge status-badge">{localizeText(formatLabel(note.status))}</span>
+                  <small>{formatDate(note.updatedAt || note.createdAt)}</small>
                 </div>
               </article>
             ))}
             {notes.length === 0 && (
               <div className="empty-state">
                 <Stethoscope size={28} />
-                <strong>No Notes</strong>
-                <span>Notes you add for accessible records will appear here.</span>
+                <strong>{t("No Notes")}</strong>
+                <span>{t("Notes you add for accessible records will appear here.")}</span>
               </div>
             )}
           </div>
@@ -776,7 +802,7 @@ export default function DoctorDashboard() {
                 <option value="">Choose a record</option>
                 {records.map((record) => (
                   <option key={record.id} value={record.id}>
-                    Record #{record.id} - {metadata[record.id]?.title || metadata[record.id]?.filename || record.uploadedBy}
+                    {localizeText(`Record #${record.id}`)} - {metadata[record.id]?.title || metadata[record.id]?.filename || record.uploadedBy}
                   </option>
                 ))}
               </select>
@@ -807,8 +833,8 @@ export default function DoctorDashboard() {
           </form>
           <div className="history-list">
             <div className="history-list-header">
-              <h3>Documents History</h3>
-              <span>{documents.length} Total</span>
+              <h3><FilePlus2 size={18} />{t("Documents History")}</h3>
+              <span>{formatNumber(documents.length)} {t("Total")}</span>
             </div>
             {documents.map((document) => (
               <article className="history-row" key={document.id}>
@@ -817,16 +843,16 @@ export default function DoctorDashboard() {
                   <span>{document.patientWallet}</span>
                 </div>
                 <div className="history-meta">
-                  <span className="badge status-badge">{formatLabel(document.documentType)}</span>
-                  <small>{new Date(document.createdAt).toLocaleString()}</small>
+                  <span className="badge status-badge">{localizeText(formatLabel(document.documentType))}</span>
+                  <small>{formatDate(document.createdAt)}</small>
                 </div>
               </article>
             ))}
             {documents.length === 0 && (
               <div className="empty-state">
                 <FilePlus2 size={28} />
-                <strong>No Documents</strong>
-                <span>Care documents you send to patients will appear here.</span>
+                <strong>{t("No Documents")}</strong>
+                <span>{t("Care documents you send to patients will appear here.")}</span>
               </div>
             )}
           </div>
@@ -844,7 +870,7 @@ export default function DoctorDashboard() {
                 disabled={loadingInstitutions || availableInstitutions.length === 0}
               >
                 <option value="">
-                  {loadingInstitutions ? "Loading institutions..." : availableInstitutions.length === 0 ? "No available institutions" : "Choose institution"}
+                  {loadingInstitutions ? t("Loading institutions...") : availableInstitutions.length === 0 ? t("No available institutions") : t("Choose institution")}
                 </option>
                 {availableInstitutions.map((institution) => (
                   <option key={institution.institutionId} value={institution.institutionId}>
@@ -859,25 +885,25 @@ export default function DoctorDashboard() {
             </label>
             <button disabled={loadingInstitutions || !joinForm.institutionId}>Request membership</button>
             {!loadingInstitutions && availableInstitutions.length === 0 && (
-              <span className="muted">Institutions with pending or approved requests are hidden from this list.</span>
+              <span className="muted">{t("Institutions with pending or approved requests are hidden from this list.")}</span>
             )}
           </form>
           <div className="history-list">
             <div className="history-list-header">
-              <h3>Membership History</h3>
-              <span>{membershipRequests.length} Total</span>
+              <h3><Building2 size={18} />{t("Membership History")}</h3>
+              <span>{formatNumber(membershipRequests.length)} {t("Total")}</span>
             </div>
             {membershipRequests.map((request) => {
               const institution = institutions.find((item) => Number(item.institutionId) === Number(request.institutionId));
               return (
                 <article className="history-row" key={request.id}>
                   <div className="history-main">
-                    <strong>{institution ? institution.name : `Institution #${request.institutionId}`}</strong>
-                    <span>{request.message || "No message provided."}</span>
+                    <strong>{institution ? institution.name : localizeText(`Institution #${request.institutionId}`)}</strong>
+                    <span>{request.message || t("No message provided.")}</span>
                   </div>
                   <div className="history-meta">
-                    <span className={`badge status-badge ${request.status}`}>{formatLabel(request.status)}</span>
-                    <small>{new Date(request.updatedAt || request.createdAt).toLocaleString()}</small>
+                    <span className={`badge status-badge ${request.status}`}>{localizeText(formatLabel(request.status))}</span>
+                    <small>{formatDate(request.updatedAt || request.createdAt)}</small>
                   </div>
                 </article>
               );
@@ -885,8 +911,8 @@ export default function DoctorDashboard() {
             {membershipRequests.length === 0 && (
               <div className="empty-state">
                 <UsersRound size={28} />
-                <strong>No Membership History</strong>
-                <span>Your institution join requests will appear here.</span>
+                <strong>{t("No Membership History")}</strong>
+                <span>{t("Your institution join requests will appear here.")}</span>
               </div>
             )}
           </div>
@@ -904,14 +930,14 @@ export default function DoctorDashboard() {
           />
           {result && (
             <div className="result-card">
-              <h2>{result.prediction === 1 ? "Diabetic Risk Indicated" : "No Diabetic Risk Indicated"}</h2>
+              <h2><BrainCircuit size={18} />{result.prediction === 1 ? t("Diabetic Risk Indicated") : t("No Diabetic Risk Indicated")}</h2>
               <RiskMeter probability={result.probability} />
               <div className="request-list">
                 <article className="request-row">
                   <div>
                     <strong>Main contributing values</strong>
                     {riskFactors.map((factor) => (
-                      <span key={factor}>{factor}</span>
+                      <span key={factor}>{localizeText(factor)}</span>
                     ))}
                   </div>
                 </article>
@@ -926,16 +952,16 @@ export default function DoctorDashboard() {
         <section className="panel request-list">
           {predictionHistory.map((row) => (
             <article className="request-row" key={row.id}>
-              <strong>{Math.round(row.probability * 100)}% risk</strong>
-              <span>{row.patientWallet || "No patient linked"}</span>
-              <small>{new Date(row.createdAt).toLocaleString()}</small>
+              <strong>{localizeText(`${Math.round(row.probability * 100)}% risk`)}</strong>
+              <span>{row.patientWallet || t("No patient linked")}</span>
+              <small>{formatDate(row.createdAt)}</small>
             </article>
           ))}
           {predictionHistory.length === 0 && (
             <div className="empty-state">
               <Stethoscope size={28} />
-              <strong>No History</strong>
-              <span>Diabetes prediction results will appear here after you submit the form.</span>
+              <strong>{t("No History")}</strong>
+              <span>{t("Diabetes prediction results will appear here after you submit the form.")}</span>
             </div>
           )}
         </section>
@@ -944,24 +970,24 @@ export default function DoctorDashboard() {
       {activeTab === "audit" && (
         <section className="panel">
           <div className="panel-title-row">
-            <h2>Doctor Audit Timeline</h2>
+            <h2><ClipboardList size={18} />{t("Doctor Audit Timeline")}</h2>
           </div>
           {auditRows.length > 0 ? (
             <div className="timeline">
               {auditRows.map((row, index) => (
                 <article className="timeline-item" key={`${row.action}-${row.target}-${index}`}>
-                  <strong>{row.action}</strong>
-                  <span>{row.target}</span>
-                  {row.detail && <small>{row.detail}</small>}
-                  <small>{row.timestamp.toLocaleString()}</small>
+                  <strong>{localizeText(row.action)}</strong>
+                  <span>{localizeText(row.target)}</span>
+                  {row.detail && <small>{localizeText(row.detail)}</small>}
+                  <small>{formatDate(row.timestamp)}</small>
                 </article>
               ))}
             </div>
           ) : (
             <div className="empty-state">
               <Stethoscope size={28} />
-              <strong>No audit events yet</strong>
-              <span>Membership, access requests, notes, documents, and predictions will appear here.</span>
+              <strong>{t("No audit events yet")}</strong>
+              <span>{t("Membership, access requests, notes, documents, and predictions will appear here.")}</span>
             </div>
           )}
         </section>
