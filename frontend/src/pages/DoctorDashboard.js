@@ -278,6 +278,14 @@ export default function DoctorDashboard() {
     await loadDoctorChainAuditRows();
   }
 
+  async function loadPredictionHistory() {
+    try {
+      const headers = await createAuthHeaders(walletAddress);
+      const response = await axios.get(`${API_URL}/api/predict/history`, { headers });
+      setPredictionHistory(response.data);
+    } catch { }
+  }
+
   useEffect(() => {
     if (walletAddress) loadAccessibleRecords();
   }, [walletAddress]);
@@ -926,7 +934,10 @@ export default function DoctorDashboard() {
             onValuesChange={setPredictionValues}
             patientWallet={predictionPatientWallet}
             onPatientWalletChange={setPredictionPatientWallet}
-            onResult={setResult}
+            onResult={(data) => {
+              setResult(data);
+              loadPredictionHistory();
+            }}
           />
           {result && (
             <div className="result-card">

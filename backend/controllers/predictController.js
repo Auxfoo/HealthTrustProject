@@ -41,7 +41,6 @@ exports.getPredictionHistory = async (req, res) => {
     const history = await prisma.predictionHistory.findMany({
       where: { doctorWallet: req.authWallet },
       orderBy: { createdAt: "desc" },
-      take: 50,
     });
     res.json(history);
   } catch (error) {
