@@ -5,9 +5,11 @@ import { useWallet } from "../context/WalletContext";
 import { parseReceiptEvent, registerInstitution } from "../utils/contractHelper";
 import { createAuthHeaders } from "../utils/auth";
 import { getEncryptionPublicKey } from "../utils/keySharing";
+import { useLanguage } from "../i18n";
 
 export default function Register() {
   const { walletAddress, API_URL, fetchProfile } = useWallet();
+  const { t } = useLanguage();
   const [institutions, setInstitutions] = useState([]);
   const [loadingInstitutions, setLoadingInstitutions] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -126,30 +128,30 @@ export default function Register() {
 
   return (
     <main className="panel narrow register-panel">
-      <h1>Register</h1>
+      <h1>{t("Register")}</h1>
       <form className="form-grid" onSubmit={submit}>
         <label>
-          Name
+          {t("Name")}
           <input value={form.name} onChange={(event) => update("name", event.target.value)} required />
         </label>
         <label>
-          Email
+          {t("Email")}
           <input type="email" value={form.email} onChange={(event) => update("email", event.target.value)} required />
         </label>
         <label>
-          Role
+          {t("Role")}
           <select value={form.role} onChange={(event) => update("role", event.target.value)}>
-            <option value="patient">Patient</option>
-            <option value="doctor">Doctor</option>
-            <option value="institution_admin">Institution Admin</option>
+            <option value="patient">{t("Patient")}</option>
+            <option value="doctor">{t("Doctor")}</option>
+            <option value="institution_admin">{t("Institution Admin")}</option>
           </select>
         </label>
 
         {form.role === "doctor" && (
           <label>
-            Institution
+            {t("Institution")}
             <select value={form.institutionId} onChange={(event) => update("institutionId", event.target.value)} disabled={loadingInstitutions}>
-              <option value="">{loadingInstitutions ? "Loading institutions..." : "None"}</option>
+              <option value="">{loadingInstitutions ? t("Loading institutions...") : t("None")}</option>
               {institutions.map((institution) => (
                 <option key={institution.institutionId} value={institution.institutionId}>
                   {institution.name} ({institution.institutionType})
@@ -162,19 +164,24 @@ export default function Register() {
         {form.role === "patient" && (
           <>
             <label>
-              Blood type
-              <input value={form.bloodType} onChange={(event) => update("bloodType", event.target.value)} />
+              {t("Blood type")}
+              <select value={form.bloodType} onChange={(event) => update("bloodType", event.target.value)}>
+                <option value="">{t("Select")}</option>
+                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bt) => (
+                  <option key={bt} value={bt}>{bt}</option>
+                ))}
+              </select>
             </label>
             <label>
-              Allergies
+              {t("Allergies")}
               <input value={form.allergies} onChange={(event) => update("allergies", event.target.value)} />
             </label>
             <label>
-              Chronic conditions
+              {t("Chronic conditions")}
               <input value={form.chronicConditions} onChange={(event) => update("chronicConditions", event.target.value)} />
             </label>
             <label>
-              Emergency contact
+              {t("Emergency contact")}
               <input value={form.emergencyContact} onChange={(event) => update("emergencyContact", event.target.value)} />
             </label>
           </>
@@ -183,7 +190,7 @@ export default function Register() {
         {form.role === "institution_admin" && (
           <>
             <label>
-              Institution name
+              {t("Institution name")}
               <input
                 value={form.institutionName}
                 onChange={(event) => update("institutionName", event.target.value)}
@@ -191,16 +198,16 @@ export default function Register() {
               />
             </label>
             <label>
-              Institution type
+              {t("Institution type")}
               <select value={form.institutionType} onChange={(event) => update("institutionType", event.target.value)}>
-                <option value="hospital">Hospital</option>
-                <option value="clinic">Clinic</option>
+                <option value="hospital">{t("Hospital")}</option>
+                <option value="clinic">{t("Clinic")}</option>
               </select>
             </label>
           </>
         )}
 
-        <button disabled={isSubmitting}>{isSubmitting ? "Waiting for MetaMask..." : "Save Profile"}</button>
+        <button disabled={isSubmitting}>{isSubmitting ? t("Waiting for MetaMask...") : t("Save Profile")}</button>
       </form>
     </main>
   );

@@ -55,6 +55,12 @@ const patientTabs = [
   { key: "security", label: "Security", icon: Lock },
 ];
 
+function formatLabel(value) {
+  return String(value || "")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
 function metadataKey(wallet) {
   return `healthtrust_record_metadata_${wallet?.toLowerCase()}`;
 }
@@ -89,26 +95,30 @@ export default function PatientDashboard() {
   const uploadInProgress = uploadStatus?.state === "working";
 
   async function loadRecords() {
-    const response = await axios.get(`${API_URL}/api/records/${walletAddress}`);
-    setRecords(response.data);
-    const local = getLocalMetadata(walletAddress);
-    const merged = {};
-    response.data.forEach((record) => {
-      merged[record.id] = { ...(local[record.id] || {}), ...(record.metadata || {}) };
-    });
-    setMetadata(merged);
+    try {
+      const response = await axios.get(`${API_URL}/api/records/${walletAddress}`);
+      setRecords(response.data);
+      const local = getLocalMetadata(walletAddress);
+      const merged = {};
+      response.data.forEach((record) => {
+        merged[record.id] = { ...(local[record.id] || {}), ...(record.metadata || {}) };
+      });
+      setMetadata(merged);
 
-    const headers = await createAuthHeaders(walletAddress);
-    const [keys, noteResponse, docs, accessRequests] = await Promise.all([
-      axios.get(`${API_URL}/api/record-keys/owned`, { headers }),
-      axios.get(`${API_URL}/api/notes`, { headers }),
-      axios.get(`${API_URL}/api/doctor-documents`, { headers }),
-      axios.get(`${API_URL}/api/access-requests`, { headers }),
-    ]);
-    setKeyRows(keys.data);
-    setNotes(noteResponse.data);
-    setDocuments(docs.data);
-    setRequests(accessRequests.data);
+      const headers = await createAuthHeaders(walletAddress);
+      const [keys, noteResponse, docs, accessRequests] = await Promise.all([
+        axios.get(`${API_URL}/api/record-keys/owned`, { headers }),
+        axios.get(`${API_URL}/api/notes`, { headers }),
+        axios.get(`${API_URL}/api/doctor-documents`, { headers }),
+        axios.get(`${API_URL}/api/access-requests`, { headers }),
+      ]);
+      setKeyRows(keys.data);
+      setNotes(noteResponse.data);
+      setDocuments(docs.data);
+      setRequests(accessRequests.data);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || t("Unable to load records"));
+    }
   }
 
   async function loadAuditTrail() {
@@ -152,7 +162,7 @@ export default function PatientDashboard() {
       const documentRows = documents.map((document) => ({
         action: "CareDocumentAdded",
         target: document.doctorWallet,
-        recordId: document.recordId || "-",
+        recordId: document.recordId ?? null,
         timestamp: new Date(document.createdAt),
         detail: document.title,
       }));
@@ -160,7 +170,7 @@ export default function PatientDashboard() {
       const notificationRows = notificationResponse.data.map((notification) => ({
         action: `Notification: ${notification.title}`,
         target: notification.type,
-        recordId: "-",
+        recordId: null,
         timestamp: new Date(notification.createdAt),
         detail: notification.message,
       }));
@@ -378,7 +388,7 @@ export default function PatientDashboard() {
           accent: "#0a84ff",
           rows: rows.map((row) => ({
             label: row.action,
-            value: `${row.timestamp} | Record: ${row.recordId} | Target: ${row.target}${row.detail ? ` | ${row.detail}` : ""}`,
+            value: `${row.timestamp} | ${typeof row.recordId === "number" ? `Record: #${row.recordId} | ` : ""}Target: ${row.target}${row.detail ? ` | ${row.detail}` : ""}`,
           })),
         },
       ],
@@ -663,11 +673,12 @@ export default function PatientDashboard() {
       )}
       {activeTab === "documents" && (
         <section className="panel request-list">
+          <div className="panel-title-row"><h3><FilePlus2 size={18} />{t("Care Documents")}</h3></div>
           {documents.map((document) => (
             <article className="request-row" key={document.id}>
               <div>
                 <strong>{document.title}</strong>
-                <span>{localizeText(`${document.documentType} from`)} {document.doctorWallet}</span>
+                <span>{localizeText(`${document.documentType} from`)} <bdi dir="ltr">{document.doctorWallet}</bdi></span>
                 <small>{formatDate(document.createdAt)}</small>
                 {document.content && <p>{document.content}</p>}
               </div>
@@ -688,12 +699,13 @@ export default function PatientDashboard() {
       )}
       {activeTab === "notes" && (
         <section className="panel request-list">
+          <div className="panel-title-row"><h3><NotebookPen size={18} />{t("Doctor Notes")}</h3></div>
           {notes.map((note) => (
             <article className="request-row" key={note.id}>
               <div>
                 <strong>{localizeText(`Record #${note.recordId}`)}</strong>
-                <span>{localizeText(note.status)}</span>
-                <small>{t("Doctor")}: {note.doctorWallet}</small>
+                <span>{localizeText(formatLabel(note.status))}</span>
+                <small>{t("Doctor")}: <bdi dir="ltr">{note.doctorWallet}</bdi></small>
                 {note.note && <p>{note.note}</p>}
               </div>
             </article>
@@ -735,7 +747,7 @@ export default function PatientDashboard() {
               {auditTrail.map((row, index) => (
                 <article className="timeline-item" key={`${row.action}-${row.recordId}-${index}`}>
                   <strong>{localizeText(row.action)}</strong>
-                  <span>{localizeText(`Record #${row.recordId}`)} - {localizeText(row.target)}</span>
+                  <span>{typeof row.recordId === "number" ? `${localizeText(`Record #${row.recordId}`)} - ` : ""}{localizeText(row.target)}</span>
                   {row.detail && <small>{localizeText(row.detail)}</small>}
                   <small>{formatDate(row.timestamp)}</small>
                 </article>

@@ -59,7 +59,7 @@ print(main.predict(payload))
 
 ## Latest Automated Result
 
-Date: 2026-05-21
+Date: 2026-05-28
 
 | Test area | Latest result |
 | --- | --- |
@@ -91,5 +91,13 @@ Some workflows cannot be completed by terminal commands because they require bro
 - Emergency request dropdown filtering for already accessible records
 - Security Model tab in each role dashboard
 - Usability testing with real participants
+- Kurdish language toggle (all pages including Register, Notes, and Documents forms)
+- Blood type select validation in registration and patient profile
+- Patient notes tab section header and formatted status labels (Reviewed / Follow Up / Urgent)
+- Patient documents tab section header
+- Doctor prediction history showing full history (no 50-record cap)
+- Doctor notes and care document forms in Kurdish
+- Audit PDF excluding null record IDs (notification rows show no Record # prefix)
+- Service status bar ML URL and live Sepolia check
 
 Use `system/system-test-cases.md` and `usability/usability-test-plan.md` for those.

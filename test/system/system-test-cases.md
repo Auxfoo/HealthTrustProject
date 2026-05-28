@@ -1,6 +1,6 @@
 # System Testing
 
-Date: 2026-05-21
+Date: 2026-05-28
 
 System testing checks HealthTrust from the user's point of view across patient, doctor, and institution admin workflows.
 
@@ -13,6 +13,8 @@ System testing checks HealthTrust from the user's point of view across patient, 
 | Frontend production build | PASS |
 | ML model training | PASS, accuracy 0.9689 |
 | ML prediction smoke test | PASS, prediction 0 and probability 0.08 |
+
+All results verified on 2026-05-28.
 
 ## Full System Startup
 
@@ -89,6 +91,15 @@ http://localhost:5173
 | TC28 | Empty role tabs | Empty notes, documents, history, requests, and shared-record tabs show clean empty states. |
 | TC29 | Invalid wallet input | Invalid wallet addresses show validation errors and do not send transactions. |
 | TC30 | Unsupported file or wrong key | Unsupported or incorrectly decrypted files show an error and do not expose content. |
+| TC31 | Language toggle | Switching to Kurdish translates all labels in Register, Patient, Doctor, and Institution dashboards, including Notes/Documents forms. English remains the fallback. |
+| TC32 | Blood type select | Registration and patient profile show a blood type dropdown with A+, A-, B+, B-, AB+, AB-, O+, O- options. Free text is not accepted. |
+| TC33 | Patient notes status labels | Notes tab displays status as "Reviewed", "Follow Up", or "Urgent" rather than raw database values. |
+| TC34 | Patient notes and documents headers | Notes tab shows a "Doctor Notes" section header. Documents tab shows a "Care Documents" section header. |
+| TC35 | Audit PDF notification rows | Exported patient audit PDF does not include "Record #" prefix for notification-type audit entries. |
+| TC36 | Full prediction history | Doctor prediction history shows all records. A doctor with more than 50 predictions can see all of them. |
+| TC37 | loadRecords error handling | If backend is unavailable when patient loads dashboard, a toast error appears rather than a silent failure. |
+| TC38 | RTL wallet addresses | In Kurdish mode, wallet addresses in doctor Documents and Prediction History tabs remain left-to-right and do not break layout. |
+| TC39 | Service status bar | Service status bar shows live status for Backend, ML, and Sepolia. Refresh button updates all three. Sepolia shows offline when network is unreachable. |
 
 ## Demonstration Flow
 

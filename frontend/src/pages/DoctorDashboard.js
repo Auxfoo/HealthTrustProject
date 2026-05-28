@@ -721,7 +721,7 @@ export default function DoctorDashboard() {
         <section className="panel split-panel">
           <form className="form-grid" onSubmit={saveNote}>
             <label>
-              Record
+              {t("Record")}
               <select
                 value={noteForm.recordId}
                 onChange={(event) => {
@@ -735,7 +735,7 @@ export default function DoctorDashboard() {
                 required
                 disabled={!hasAccessibleRecords}
               >
-                <option value="">Choose a record</option>
+                <option value="">{t("Choose a record")}</option>
                 {records.map((record) => (
                   <option key={record.id} value={record.id}>
                     {localizeText(`Record #${record.id}`)} - {metadata[record.id]?.title || metadata[record.id]?.filename || record.uploadedBy}
@@ -744,22 +744,22 @@ export default function DoctorDashboard() {
               </select>
             </label>
             <label>
-              Patient wallet
+              {t("Patient wallet")}
               <input value={noteForm.patientWallet} readOnly required />
             </label>
             <label>
-              Review status
+              {t("Review status")}
               <select value={noteForm.status} onChange={(event) => setNoteForm({ ...noteForm, status: event.target.value })}>
-                <option value="reviewed">Reviewed</option>
-                <option value="follow_up">Follow-up needed</option>
-                <option value="urgent">Urgent</option>
+                <option value="reviewed">{t("Reviewed")}</option>
+                <option value="follow_up">{t("Follow-up needed")}</option>
+                <option value="urgent">{t("Urgent")}</option>
               </select>
             </label>
             <label>
-              Note
+              {t("Note")}
               <textarea value={noteForm.note} onChange={(event) => setNoteForm({ ...noteForm, note: event.target.value })} />
             </label>
-            <button disabled={!hasAccessibleRecords}>Save note</button>
+            <button disabled={!hasAccessibleRecords}>{t("Save note")}</button>
           </form>
           <div className="history-list">
             <div className="history-list-header">
@@ -793,7 +793,7 @@ export default function DoctorDashboard() {
         <section className="panel split-panel">
           <form className="form-grid" onSubmit={sendCareDocument}>
             <label>
-              Record
+              {t("Record")}
               <select
                 value={docForm.sourceRecordId}
                 onChange={(event) => {
@@ -807,7 +807,7 @@ export default function DoctorDashboard() {
                 required
                 disabled={!hasAccessibleRecords}
               >
-                <option value="">Choose a record</option>
+                <option value="">{t("Choose a record")}</option>
                 {records.map((record) => (
                   <option key={record.id} value={record.id}>
                     {localizeText(`Record #${record.id}`)} - {metadata[record.id]?.title || metadata[record.id]?.filename || record.uploadedBy}
@@ -816,28 +816,28 @@ export default function DoctorDashboard() {
               </select>
             </label>
             <label>
-              Patient wallet
+              {t("Patient wallet")}
               <input value={docForm.patientWallet} readOnly required />
             </label>
             <label>
-              Type
+              {t("Type")}
               <select value={docForm.documentType} onChange={(event) => setDocForm({ ...docForm, documentType: event.target.value })}>
-                <option value="prescription">Prescription</option>
-                <option value="diagnosis">Diagnosis note</option>
-                <option value="lab_request">Lab request</option>
-                <option value="referral">Referral</option>
-                <option value="follow_up">Follow-up summary</option>
+                <option value="prescription">{t("Prescription")}</option>
+                <option value="diagnosis">{t("Diagnosis note")}</option>
+                <option value="lab_request">{t("Lab request")}</option>
+                <option value="referral">{t("Referral")}</option>
+                <option value="follow_up">{t("Follow-up summary")}</option>
               </select>
             </label>
             <label>
-              Title
+              {t("Title")}
               <input value={docForm.title} onChange={(event) => setDocForm({ ...docForm, title: event.target.value })} required />
             </label>
             <label>
-              Content
+              {t("Content")}
               <textarea value={docForm.content} onChange={(event) => setDocForm({ ...docForm, content: event.target.value })} />
             </label>
-            <button disabled={!hasAccessibleRecords}>Send to patient</button>
+            <button disabled={!hasAccessibleRecords}>{t("Send to patient")}</button>
           </form>
           <div className="history-list">
             <div className="history-list-header">
@@ -848,7 +848,7 @@ export default function DoctorDashboard() {
               <article className="history-row" key={document.id}>
                 <div className="history-main">
                   <strong>{document.title}</strong>
-                  <span>{document.patientWallet}</span>
+                  <span><bdi dir="ltr">{document.patientWallet}</bdi></span>
                 </div>
                 <div className="history-meta">
                   <span className="badge status-badge">{localizeText(formatLabel(document.documentType))}</span>
@@ -964,7 +964,7 @@ export default function DoctorDashboard() {
           {predictionHistory.map((row) => (
             <article className="request-row" key={row.id}>
               <strong>{localizeText(`${Math.round(row.probability * 100)}% risk`)}</strong>
-              <span>{row.patientWallet || t("No patient linked")}</span>
+              <span><bdi dir="ltr">{row.patientWallet || t("No patient linked")}</bdi></span>
               <small>{formatDate(row.createdAt)}</small>
             </article>
           ))}

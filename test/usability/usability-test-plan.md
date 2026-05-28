@@ -1,6 +1,6 @@
 # Usability Testing Plan
 
-Date: 2026-05-21
+Date: 2026-05-28
 
 This plan defines how HealthTrust can be evaluated with representative patient, doctor, and institution admin users. The plan is included as supporting evaluation material for the graduation project.
 
@@ -60,6 +60,9 @@ http://localhost:5173
 | Institution admin reviews Shared records | Less than 2 minutes | User understands the doctor key count. |
 | Institution admin exports audit report PDF | Less than 1 minute | PDF opens and user can identify operational summary and timeline. |
 | Institution admin removes doctor | Less than 2 minutes | Doctor is removed and notified. |
+| User switches language to Kurdish | Less than 1 minute | All visible labels and form text switch to Kurdish. Blood type options, status labels, and section headers are also translated. |
+| Patient registers and selects blood type | Less than 1 minute | User selects from the blood type dropdown (A+, A-, B+, B-, AB+, AB-, O+, O-) without needing to type a value. |
+| Patient views notes tab | Less than 1 minute | User reads note status as "Reviewed", "Follow Up", or "Urgent" and understands the section header. |
 
 ## Observation Questions
 
@@ -75,6 +78,10 @@ http://localhost:5173
 - Do exported PDFs read as reports rather than replacements for original uploaded records?
 - Does the doctor understand why some emergency records or institutions are hidden from dropdowns?
 - Are success/error notifications visible without blocking important controls?
+- Does the Kurdish language toggle apply consistently across all pages and forms, including registration and doctor notes/documents forms?
+- Does the blood type dropdown make registration feel simpler than a free-text input?
+- Are status labels (Reviewed / Follow Up / Urgent) clear enough in the patient notes tab?
+- Does the service status bar help users understand which services are online or offline?
 
 ## SUS Questionnaire
 

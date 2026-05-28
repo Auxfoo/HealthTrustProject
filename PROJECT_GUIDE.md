@@ -12,8 +12,8 @@ The current role workflows are:
 
 | Role | Main workflows |
 | --- | --- |
-| Patient | Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes, view care documents, download branded care-document PDFs, export branded audit-report PDFs, view notifications, view audit history, and review the security model. |
-| Doctor | Register encryption public key, create an automatic institution membership request during signup when an institution is selected, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view prediction history, add notes, send care documents, request institution membership, and view notifications. |
+| Patient | Register profile with blood type select, allergies, chronic conditions, and emergency contact fields. Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes with formatted status labels and section header, view care documents with section header, download branded care-document PDFs, export branded audit-report PDFs (null record IDs excluded from audit rows), view notifications, view audit history, and review the security model. |
+| Doctor | Register encryption public key, create an automatic institution membership request during signup when an institution is selected, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view full prediction history (no 50-record cap), add notes, send care documents, request institution membership, and view notifications. All note and care document forms are fully bilingual (Kurdish / English). |
 | Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, review analytics/audit history, export branded audit-report PDFs, view notifications, and review the security model. |
 
 The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
@@ -204,7 +204,7 @@ Expected features:
 
 `train.py` trains a `RandomForestClassifier` pipeline with one-hot encoding for categorical fields and saves `model.pkl`. `main.py` loads `model.pkl` and exposes `/predict`.
 
-Latest local training result, verified on 2026-05-21:
+Latest local training result, verified on 2026-05-28:
 
 ```text
 Accuracy: 0.9689
@@ -262,15 +262,16 @@ Main frontend files:
 
 | File | Purpose |
 | --- | --- |
-| `Register.js` | Role registration and encryption public key registration. |
-| `PatientDashboard.js` | Patient records, upload, metadata, access modal, notes, documents, profile, notifications, and audit trail. |
-| `DoctorDashboard.js` | Accessible records, decrypt/download, emergency requests, notes, care documents, histories, membership requests, prediction, history, notifications. |
+| `Register.js` | Role registration and encryption public key registration. Fully bilingual (Kurdish / English). Blood type input is a validated select. |
+| `PatientDashboard.js` | Patient records, upload, metadata, access modal, notes (with header and formatted status), documents (with header), profile, notifications, and audit trail. Audit PDF excludes null record IDs from timeline rows. |
+| `DoctorDashboard.js` | Accessible records, decrypt/download, emergency requests, notes, care documents, histories, membership requests, prediction, full prediction history (no 50-record cap), notifications. Notes and documents forms are fully bilingual. |
 | `InstitutionDashboard.js` | Institution registration, doctors, doctor requests, shared records with key counts, analytics, audit, notifications. |
 | `AccessModal.js` | Patient grant/revoke doctor/institution access, resend/share keys. |
 | `PredictionForm.js` | Diabetes prediction form. |
 | `NotificationsPanel.js` | Notification list and mark-read action. |
 | `RecordCard.js` | Shared record display component. |
 | `frontend/src/utils/pdfReport.js` | Branded HealthTrust PDF report generator for care documents and audit exports. |
+| `frontend/src/components/ServiceStatus.js` | Service status bar. Backend and ML URLs are configurable via `VITE_API_URL` and `VITE_ML_URL`. Sepolia status is live-checked via JSON-RPC. |
 
 The UI includes empty states for tabs/lists with no records, notes, documents, requests, notifications, history, or shared records. It also includes Important/Emergency flags, upload status, doctor note/document/membership histories, and shared-key counts for institution records.
 
@@ -315,7 +316,7 @@ npm test
 Latest result:
 
 ```text
-2026-05-21
+2026-05-28
 4 passed, 0 failed
 ```
 
@@ -329,7 +330,7 @@ npm test
 Latest result:
 
 ```text
-2026-05-21
+2026-05-28
 3 passing
 ```
 
@@ -375,7 +376,7 @@ Expected output shape:
 {'prediction': 0, 'probability': 0.08}
 ```
 
-Latest local prediction smoke test on 2026-05-21 returned `{'prediction': 0, 'probability': 0.08}`.
+Latest local prediction smoke test on 2026-05-28 returned `{'prediction': 0, 'probability': 0.08}`.
 
 ### 12.2 Integration Testing
 
@@ -462,6 +463,8 @@ uvicorn main:app --reload
 cd frontend
 npm start
 ```
+
+The frontend dev server starts on `http://localhost:5173`. `VITE_ML_URL` sets the ML service URL shown in the service status bar (defaults to `http://localhost:8000`). The Sepolia status indicator performs a live JSON-RPC check instead of always showing online.
 
 ## 14. Sample Records
 

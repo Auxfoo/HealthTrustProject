@@ -51,8 +51,8 @@ Excluded from this prototype:
 
 | Role | Can do |
 | --- | --- |
-| Patient | Register profile, upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, approve/reject access requests, view doctor notes, view care documents, download branded care-document PDFs, export branded audit-report PDFs, see notifications, view audit history, and review the security model. |
-| Doctor | Register profile and MetaMask encryption public key, choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view prediction history, add notes to records, send care documents linked to records, request institution membership, and see notifications. |
+| Patient | Register profile (blood type from a validated select, allergies, chronic conditions, emergency contact), upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, approve/reject access requests, view doctor notes with formatted status labels, view care documents, download branded care-document PDFs, export branded audit-report PDFs, see notifications, view audit history, and review the security model. |
+| Doctor | Register profile and MetaMask encryption public key, choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view full prediction history (no count cap), add notes to records, send care documents linked to records, request institution membership, and see notifications. All forms are fully bilingual (Kurdish / English). |
 | Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared-key counts, review analytics/audit history, export branded institution audit-report PDFs, see notifications, and review the security model. |
 
 ## Architecture
@@ -123,7 +123,10 @@ Frontend `.env` needs:
 
 ```env
 VITE_API_URL=http://localhost:5000
+VITE_ML_URL=http://localhost:8000
 ```
+
+`VITE_ML_URL` controls the ML service URL shown in the service status bar. Defaults to `http://localhost:8000` if omitted.
 
 Use real Sepolia RPC URLs for demos. The backend can fall back to a public Sepolia provider for some read-only record lookups if `SEPOLIA_RPC_URL` is still the placeholder value, but deploys, server-side proxy writes, and reliable demos should use a real Alchemy/Infura/custom RPC URL.
 
@@ -279,7 +282,7 @@ Suggested report mapping:
 
 Automated checks:
 
-Latest automated check date: 2026-05-21.
+Latest automated check date: 2026-05-28.
 
 ```powershell
 cd backend
@@ -338,6 +341,8 @@ Latest local automated results:
 | Frontend production build | PASS |
 | ML training | PASS, accuracy 0.9689 |
 | ML prediction smoke test | PASS, prediction 0, probability 0.08 |
+
+All results verified on 2026-05-28.
 
 Testing evidence and manual test cases are stored in `test`.
 

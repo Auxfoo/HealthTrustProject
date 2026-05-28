@@ -1,6 +1,6 @@
 # Unit Testing Results
 
-Date: 2026-05-21
+Date: 2026-05-28
 
 ## How To Run
 
@@ -64,6 +64,8 @@ print(main.predict(payload))
 | ML model training | `cd ml_service && python train.py` | PASS |
 | ML direct prediction | Import `main.py` and call `main.predict(...)` | PASS |
 
+All results verified on 2026-05-28.
+
 ## Backend Unit Test Summary
 
 | Test | Result |
@@ -122,3 +124,15 @@ Prediction output:
 The frontend build passed. Vite reported a chunk-size warning because the generated JavaScript bundle is larger than 500 kB. This is a performance warning, not a functional failure.
 
 The current frontend build covers patient upload status, Important/Emergency flags, notifications, doctor history rows, the access modal key icon, institution shared-key counts, duplicate-safe institution request UI, emergency dropdown filtering, and branded PDF report generation imports. These are validated by build/import success only; visual confirmation still belongs in system/usability testing.
+
+Additional components validated by the 2026-05-28 build:
+
+- Full Kurdish/English bilingual support across Register, Doctor Notes form, Doctor Documents form, and all dashboard tabs.
+- Blood type select in registration and patient profile (A+, A-, B+, B-, AB+, AB-, O+, O-).
+- Patient Notes tab section header and `formatLabel()` status formatting (Reviewed / Follow Up / Urgent).
+- Patient Documents tab section header.
+- Audit PDF generation skips Record # prefix for notification rows (null recordId guard).
+- Prediction history backend query returns all records without a 50-record cap.
+- `loadRecords()` in PatientDashboard wrapped in try/catch for error handling.
+- Wallet addresses in doctor documents history and prediction history wrapped in `<bdi dir="ltr">` for RTL layout.
+- ServiceStatus reads `VITE_ML_URL` env var and performs a live JSON-RPC check for Sepolia status.
