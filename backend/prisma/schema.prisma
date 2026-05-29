@@ -7,17 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum UserRole {
-  patient
-  doctor
-  institution_admin
-}
-
-enum InstitutionType {
-  hospital
-  clinic
-}
-
 model User {
   id                  Int      @id @default(autoincrement())
   wallet              String   @unique
@@ -47,21 +36,21 @@ model Institution {
 }
 
 model RecordMetadata {
-  id          Int      @id @default(autoincrement())
-  recordId    Int      @unique
+  id          Int       @id @default(autoincrement())
+  recordId    Int       @unique
   ownerWallet String
   filename    String?
   mimeType    String?
   title       String?
-  category    String   @default("other")
+  category    String    @default("other")
   provider    String?
   visitDate   DateTime?
   notes       String?
-  archived    Boolean  @default(false)
-  important   Boolean  @default(false)
-  emergency   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  archived    Boolean   @default(false)
+  important   Boolean   @default(false)
+  emergency   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@map("record_metadata")
 }
@@ -71,7 +60,7 @@ model RecordKey {
   recordId        Int
   ownerWallet     String
   recipientWallet String
-  encryptedKey    String   @db.Text
+  encryptedKey    String
   accessType      String   @default("doctor")
   accessTarget    String
   createdAt       DateTime @default(now())
@@ -102,7 +91,7 @@ model DoctorNote {
   patientWallet String
   doctorWallet  String
   status        String   @default("reviewed")
-  note          String?  @db.Text
+  note          String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -135,7 +124,7 @@ model InstitutionJoinRequest {
 }
 
 model DoctorDocument {
-  id           Int      @id @default(autoincrement())
+  id            Int      @id @default(autoincrement())
   patientWallet String
   doctorWallet  String
   recordId      Int?
@@ -143,7 +132,7 @@ model DoctorDocument {
   encrypted     Boolean  @default(false)
   documentType  String
   title         String
-  content       String   @db.Text
+  content       String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -160,4 +149,15 @@ model Notification {
   createdAt DateTime @default(now())
 
   @@map("notifications")
+}
+
+enum UserRole {
+  patient
+  doctor
+  institution_admin
+}
+
+enum InstitutionType {
+  hospital
+  clinic
 }
