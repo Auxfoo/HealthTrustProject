@@ -13,7 +13,7 @@ The current role workflows are:
 | Role | Main workflows |
 | --- | --- |
 | Patient | Register profile with blood type select, allergies, chronic conditions, and emergency contact fields. Upload encrypted records with a visible status indicator, edit metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, share/resend AES key envelopes, approve access requests, view doctor notes with formatted status labels and section header, view care documents with section header, download branded care-document PDFs, export branded audit-report PDFs (null record IDs excluded from audit rows), view notifications, view audit history, and review the security model. |
-| Doctor | Register encryption public key, create an automatic institution membership request during signup when an institution is selected, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, run predictions, view full prediction history (no 50-record cap), add notes, send care documents, request institution membership, and view notifications. All note and care document forms are fully bilingual (Kurdish / English). |
+| Doctor | Register encryption public key, create an automatic institution membership request during signup when an institution is selected, view accessible records, decrypt original records through MetaMask key envelopes, request emergency access from a dropdown that hides already accessible records, auto-fill diabetes prediction fields from readable PDFs, choose glucose test context, run predictions, view full prediction history (no 50-record cap), add notes, send care documents, request institution membership, and view notifications. All note and care document forms are fully bilingual (Kurdish / English). |
 | Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared key counts, review analytics/audit history, export branded audit-report PDFs, view notifications, and review the security model. |
 
 The project combines React, Node/Express, PostgreSQL/Prisma, Solidity, Sepolia, IPFS/Pinata, FastAPI, and scikit-learn.
@@ -113,7 +113,8 @@ Node.js / Express Backend
   | axios
   v
 FastAPI ML Service
-  | scikit-learn RandomForestClassifier
+  | calibrated scikit-learn HistGradientBoostingClassifier
+  | clinical probability blend
   v
 Diabetes prediction and probability
 ```
@@ -130,7 +131,7 @@ Doctor views and decrypts a record: the doctor opens Records, clicks View, and M
 
 Doctor notes and care documents: the doctor chooses an accessible record from a dropdown, adds a note, or sends a care document. Patients can see notes and care documents in their dashboard. Care documents are linked to existing records and stored in PostgreSQL; they do not create a new blockchain record.
 
-Doctor prediction flow: the doctor enters diabetes inputs manually or auto-fills them from a readable diabetes vitals PDF. The frontend posts to the backend, the backend forwards to FastAPI, and FastAPI returns prediction and probability.
+Doctor prediction flow: the doctor enters diabetes inputs manually or auto-fills them from a readable diabetes vitals PDF, then chooses the glucose test context: unknown, fasting, random, or 2-hour/after-meal. The frontend posts to the backend, the backend forwards to FastAPI, and FastAPI returns the final prediction, blended probability, trained model probability, and clinical-rule probability.
 
 Emergency access flow: a patient can mark a record as emergency-visible. A doctor can request emergency access for that record. The patient still controls final approval, on-chain access, and encrypted key sharing.
 
@@ -201,13 +202,16 @@ Expected features:
 | `bmi` | Body mass index. |
 | `HbA1c_level` | Hemoglobin A1c level. |
 | `blood_glucose_level` | Blood glucose level. |
+| `glucose_context` | HealthTrust API/UI context for interpreting glucose: unknown, fasting, random, or post-meal/2-hour. This is used by the clinical-rule blend and is not part of the Kaggle training dataset. |
 
-`train.py` trains a `RandomForestClassifier` pipeline with one-hot encoding for categorical fields and saves `model.pkl`. `main.py` loads `model.pkl` and exposes `/predict`.
+`train.py` trains a calibrated `HistGradientBoostingClassifier` pipeline with one-hot encoding for categorical fields, monotonic constraints for numeric risk features, and isotonic probability calibration. It saves `model.pkl`. `main.py` loads `model.pkl`, validates realistic input ranges, applies glucose-context-aware clinical rules, blends the trained model probability with a clinical-rule probability, and exposes `/predict`.
 
-Latest local training result, verified on 2026-05-28:
+Latest local training result, verified on 2026-05-29:
 
 ```text
-Accuracy: 0.9689
+Accuracy: 0.97
+Brier score: 0.0237
+Probability distribution: 81.9% at extremes (<5% or >95%), 4.3% in mid-range (20%-80%)
 ```
 
 This result is not a diagnosis and should not replace medical judgment.
@@ -267,11 +271,11 @@ Main frontend files:
 | `DoctorDashboard.js` | Accessible records, decrypt/download, emergency requests, notes, care documents, histories, membership requests, prediction, full prediction history (no 50-record cap), notifications. Notes and documents forms are fully bilingual. |
 | `InstitutionDashboard.js` | Institution registration, doctors, doctor requests, shared records with key counts, analytics, audit, notifications. |
 | `AccessModal.js` | Patient grant/revoke doctor/institution access, resend/share keys. |
-| `PredictionForm.js` | Diabetes prediction form. |
+| `PredictionForm.js` | Diabetes prediction form with glucose test context selection. |
 | `NotificationsPanel.js` | Notification list and mark-read action. |
 | `RecordCard.js` | Shared record display component. |
 | `frontend/src/utils/pdfReport.js` | Branded HealthTrust PDF report generator for care documents and audit exports. |
-| `frontend/src/components/ServiceStatus.js` | Service status bar. Backend and ML URLs are configurable via `VITE_API_URL` and `VITE_ML_URL`. Sepolia status is live-checked via JSON-RPC. |
+| `frontend/src/components/ServiceStatus.js` | Service status bar. Backend, ML, and frontend Sepolia status URLs are configurable via `VITE_API_URL`, `VITE_ML_URL`, and `VITE_SEPOLIA_RPC_URL`. Sepolia status is live-checked via JSON-RPC. |
 
 The UI includes empty states for tabs/lists with no records, notes, documents, requests, notifications, history, or shared records. It also includes Important/Emergency flags, upload status, doctor note/document/membership histories, and shared-key counts for institution records.
 
@@ -355,7 +359,9 @@ Run ML prediction smoke test:
 cd ml_service
 @'
 import main
-main.load_model()
+import joblib
+
+main.model = joblib.load(main.MODEL_PATH)
 payload = main.DiabetesInput(
     gender="Female",
     age=54,
@@ -365,6 +371,7 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
+    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -373,10 +380,10 @@ print(main.predict(payload))
 Expected output shape:
 
 ```text
-{'prediction': 0, 'probability': 0.08}
+{'prediction': 1, 'probability': 0.8286566366692054, 'modelProbability': 0.05526340771454772, 'clinicalProbability': 0.8286566366692054}
 ```
 
-Latest local prediction smoke test on 2026-05-28 returned `{'prediction': 0, 'probability': 0.08}`.
+Latest local prediction smoke test on 2026-05-29 returned prediction `1`, probability `0.8287`, model probability `0.0553`, and clinical probability `0.8287`.
 
 ### 12.2 Integration Testing
 
@@ -414,7 +421,7 @@ System test cases are stored in:
 test\system\system-test-cases.md
 ```
 
-The main manual workflows are patient upload, patient grant, doctor decrypt, doctor note, doctor care document, branded PDF export, institution grant, duplicate-safe membership approval/removal, emergency dropdown filtering, notifications, and prediction auto-fill.
+The main manual workflows are patient upload, patient grant, doctor decrypt, doctor note, doctor care document, branded PDF export, institution grant, duplicate-safe membership approval/removal, emergency dropdown filtering, notifications, prediction auto-fill, and glucose test context selection.
 
 ### 12.4 Usability Testing
 
@@ -464,7 +471,7 @@ cd frontend
 npm start
 ```
 
-The frontend dev server starts on `http://localhost:5173`. `VITE_ML_URL` sets the ML service URL shown in the service status bar (defaults to `http://localhost:8000`). The Sepolia status indicator performs a live JSON-RPC check instead of always showing online.
+The frontend dev server starts on `http://localhost:5173`. `VITE_ML_URL` sets the ML service URL shown in the service status bar (defaults to `http://localhost:8000`). `VITE_SEPOLIA_RPC_URL` sets the Sepolia JSON-RPC endpoint used by the live status check (defaults to `https://rpc.sepolia.org`). For reliable demos, set it to the same provider family used by backend/blockchain `SEPOLIA_RPC_URL`.
 
 ## 14. Sample Records
 
@@ -518,14 +525,17 @@ Suggested report figure mapping:
 | Pinata documentation | https://docs.pinata.cloud/ |
 | MetaMask developer documentation | https://docs.metamask.io/ |
 | FastAPI documentation | https://fastapi.tiangolo.com/ |
-| scikit-learn RandomForestClassifier | https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html |
+| scikit-learn HistGradientBoostingClassifier | https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html |
+| scikit-learn CalibratedClassifierCV | https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html |
+| CDC diabetes testing overview | https://www.cdc.gov/diabetes/diabetes-testing/index.html |
+| ADA diabetes diagnosis overview | https://diabetes.org/about-diabetes/diagnosis |
 | Diabetes prediction dataset | https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset |
 
 ## 17. Conclusion
 
 HealthTrust successfully demonstrates a prototype for decentralized, patient-controlled medical record sharing. The project shows that private medical files do not need to be stored directly on blockchain. Instead, files can be encrypted in the browser, pinned to IPFS, and referenced by CIDs on a smart contract. Patients can grant or revoke future access for doctors and institutions, while audit events provide a transparent record of permission changes.
 
-The system also demonstrates how predictive analytics can be added without sending patient identity or full uploaded records to the ML service. The diabetes prediction feature uses medical numerical inputs and returns a non-diagnostic risk result for demonstration.
+The system also demonstrates how predictive analytics can be added without sending patient identity or full uploaded records to the ML service. The diabetes prediction feature uses medical categorical and numerical inputs and returns a non-diagnostic risk result for demonstration.
 
 ## 18. Future Work
 
@@ -553,7 +563,7 @@ Future improvements include:
 | `frontend/src/pages/DoctorDashboard.js` | Doctor role UI. |
 | `frontend/src/pages/InstitutionDashboard.js` | Institution admin role UI. |
 | `frontend/src/components/AccessModal.js` | Patient access and key-sharing modal. |
-| `frontend/src/components/PredictionForm.js` | Diabetes prediction form. |
+| `frontend/src/components/PredictionForm.js` | Diabetes prediction form with glucose test context selection. |
 | `frontend/src/utils/encryption.js` | AES file encryption/decryption helpers. |
 | `frontend/src/utils/keySharing.js` | MetaMask encryption key envelope helpers. |
 | `frontend/src/utils/recordSharing.js` | Stores doctor/institution key envelopes. |
@@ -578,7 +588,8 @@ Future improvements include:
 | Key envelope | AES key encrypted for a specific doctor wallet. |
 | Prisma | Node.js database toolkit. |
 | FastAPI | Python API framework used for the ML service. |
-| RandomForestClassifier | scikit-learn model used for diabetes prediction. |
+| HistGradientBoostingClassifier | scikit-learn model used for diabetes prediction. |
+| CalibratedClassifierCV | scikit-learn wrapper used to calibrate model probabilities. |
 
 ## 21. Known Limitations and Future Improvements
 
@@ -592,6 +603,7 @@ Known limitations:
 - Pinata/IPFS gateway outages can affect retrieval.
 - Institution admins are self-registered with no real-world KYC.
 - The ML result is not a medical diagnosis.
+- Glucose interpretation depends on whether the reading is fasting, random, or after-meal/2-hour; the app captures this context for the clinical-rule blend but still remains a prototype.
 - No formal security audit has been performed.
 - Clearing local PostgreSQL data does not clear Sepolia smart-contract events; redeploy the contract for a clean on-chain demo.
 

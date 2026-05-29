@@ -14,6 +14,7 @@ const initialValues = {
   bmi: "",
   HbA1c_level: "",
   blood_glucose_level: "",
+  glucose_context: "unknown",
 };
 
 const fieldConfig = {
@@ -29,6 +30,16 @@ const fieldConfig = {
   bmi: { label: "BMI", type: "number", step: "0.01", min: 10, max: 80, parser: Number.parseFloat },
   HbA1c_level: { label: "HbA1c level", type: "number", step: "0.1", min: 3.5, max: 18, parser: Number.parseFloat },
   blood_glucose_level: { label: "Blood glucose level", type: "number", step: "1", min: 40, max: 600, parser: (value) => Number.parseInt(value, 10) },
+  glucose_context: {
+    label: "Glucose test context",
+    type: "select",
+    options: [
+      { value: "unknown", label: "Unknown / not sure" },
+      { value: "fasting", label: "Fasting" },
+      { value: "random", label: "Random" },
+      { value: "post_meal", label: "2-hour / after meal" },
+    ],
+  },
 };
 
 export default function PredictionForm({ onResult, values, onValuesChange, patientWallet, onPatientWalletChange }) {

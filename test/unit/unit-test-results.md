@@ -39,7 +39,9 @@ ML direct prediction smoke test:
 cd ml_service
 @'
 import main
-main.load_model()
+import joblib
+
+main.model = joblib.load(main.MODEL_PATH)
 payload = main.DiabetesInput(
     gender="Female",
     age=54,
@@ -49,6 +51,7 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
+    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -64,7 +67,7 @@ print(main.predict(payload))
 | ML model training | `cd ml_service && python train.py` | PASS |
 | ML direct prediction | Import `main.py` and call `main.predict(...)` | PASS |
 
-All results verified on 2026-05-28.
+Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
 
 ## Backend Unit Test Summary
 
@@ -89,10 +92,12 @@ Total blockchain tests: 3 passed, 0 failed.
 
 ## ML Test Summary
 
-Training accuracy:
+Training summary:
 
 ```text
-0.9689
+Accuracy: 0.97
+Brier score: 0.0237
+Probability distribution: 81.9% at extremes (<5% or >95%), 4.3% in mid-range (20%-80%)
 ```
 
 Prediction smoke test input:
@@ -106,7 +111,8 @@ Prediction smoke test input:
   "smoking_history": "never",
   "bmi": 27.32,
   "HbA1c_level": 6.6,
-  "blood_glucose_level": 140
+  "blood_glucose_level": 140,
+  "glucose_context": "unknown"
 }
 ```
 
@@ -114,9 +120,21 @@ Prediction output:
 
 ```json
 {
-  "prediction": 0,
-  "probability": 0.08
+  "prediction": 1,
+  "probability": 0.8286566366692054,
+  "modelProbability": 0.05526340771454772,
+  "clinicalProbability": 0.8286566366692054
 }
+```
+
+Glucose context check:
+
+```text
+Male, age 20, BMI 20, HbA1c 5.0, glucose 180
+unknown context: 37% risk
+fasting context: 99% risk
+random context: 36% risk
+post_meal context: 41% risk
 ```
 
 ## Notes
@@ -135,4 +153,4 @@ Additional components validated by the 2026-05-28 build:
 - Prediction history backend query returns all records without a 50-record cap.
 - `loadRecords()` in PatientDashboard wrapped in try/catch for error handling.
 - Wallet addresses in doctor documents history and prediction history wrapped in `<bdi dir="ltr">` for RTL layout.
-- ServiceStatus reads `VITE_ML_URL` env var and performs a live JSON-RPC check for Sepolia status.
+- ServiceStatus reads `VITE_ML_URL` and `VITE_SEPOLIA_RPC_URL` env vars and performs a live JSON-RPC check for Sepolia status.

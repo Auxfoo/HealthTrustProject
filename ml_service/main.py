@@ -44,6 +44,7 @@ class DiabetesInput(BaseModel):
     bmi: float
     HbA1c_level: float
     blood_glucose_level: int
+    glucose_context: str = "unknown"
 
 
 REALISTIC_RANGES = {
@@ -56,6 +57,7 @@ REALISTIC_RANGES = {
 ALLOWED_CATEGORIES = {
     "gender": ["Female", "Male", "Other"],
     "smoking_history": ["No Info", "current", "ever", "former", "never", "not current"],
+    "glucose_context": ["unknown", "fasting", "random", "post_meal"],
 }
 
 
@@ -95,6 +97,22 @@ def sigmoid(value: float) -> float:
     return 1 / (1 + math.exp(-value))
 
 
+def glucose_context_probability(glucose: float, hba1c: float, risk_strength: float, context: str) -> float | None:
+    context_settings = {
+        "fasting": {"activation": 100, "center": 118, "scale": 14},
+        "post_meal": {"activation": 140, "center": 190, "scale": 26},
+        "random": {"activation": 140, "center": 196, "scale": 28},
+        "unknown": {"activation": 140, "center": 198, "scale": 34},
+    }
+    settings = context_settings.get(context, context_settings["unknown"])
+    if glucose < settings["activation"]:
+        return None
+
+    hba1c_support = max(0.0, hba1c - 5.7) * 0.35
+    context_score = (glucose - settings["center"]) / settings["scale"] + hba1c_support + risk_strength * 0.8
+    return sigmoid(context_score)
+
+
 def clinical_probability(values: dict) -> float:
     age = float(values["age"])
     bmi = float(values["bmi"])
@@ -103,6 +121,7 @@ def clinical_probability(values: dict) -> float:
     hypertension = int(values["hypertension"])
     heart_disease = int(values["heart_disease"])
     smoking = values["smoking_history"]
+    glucose_context = values.get("glucose_context", "unknown")
 
     score = -5.9
     score += max(0.0, hba1c - 5.3) * 1.25
@@ -136,12 +155,9 @@ def clinical_probability(values: dict) -> float:
 
     if hba1c >= 6.5:
         probability = max(probability, sigmoid((hba1c - 6.1) * 2.2 + max(0.0, glucose - 90) / 160 + risk_strength))
-    if glucose >= 200:
-        probability = max(probability, sigmoid((glucose - 185) / 18 + max(0.0, hba1c - 5.7) * 0.4 + risk_strength))
-    if 5.7 <= hba1c < 6.5 and 100 <= glucose < 126:
-        probability = max(probability, sigmoid(-2.0 + (hba1c - 5.7) * 1.1 + (glucose - 100) / 28 + risk_strength))
-    if glucose >= 126 and (age >= 45 or bmi >= 30 or hypertension or heart_disease):
-        probability = max(probability, sigmoid((glucose - 118) / 34 + risk_strength))
+    contextual_glucose_probability = glucose_context_probability(glucose, hba1c, risk_strength, glucose_context)
+    if contextual_glucose_probability is not None:
+        probability = max(probability, contextual_glucose_probability)
     if hba1c >= 5.7 and sum([age >= 45, bmi >= 30, bool(hypertension), bool(heart_disease)]) >= 2:
         probability = max(probability, sigmoid((hba1c - 5.45) * 1.8 + risk_strength))
 

@@ -33,12 +33,14 @@
   --radius-sheet: 18px;
   color: var(--text);
   background: var(--bg);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter,
+    "Segoe UI", sans-serif;
   font-size: 16px;
 }
 
 :root[data-language="ku"] {
-  font-family: Vazirmatn, "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  font-family: Vazirmatn, "Noto Sans Arabic", "Segoe UI", Tahoma, Arial,
+    sans-serif;
   font-size: 15.8px;
   font-weight: 450;
   line-height: 1.62;
@@ -88,8 +90,11 @@ html {
 }
 
 body {
-  background:
-    linear-gradient(180deg, rgba(10, 132, 255, 0.08), transparent 330px),
+  background: linear-gradient(
+      180deg,
+      rgba(10, 132, 255, 0.08),
+      transparent 330px
+    ),
     linear-gradient(120deg, rgba(34, 184, 170, 0.08), transparent 520px),
     var(--bg);
   background-attachment: fixed;
@@ -126,21 +131,23 @@ button,
   min-height: 44px;
   padding: 0.76rem 1rem;
   text-decoration: none;
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease,
+    border-color 160ms ease;
   white-space: nowrap;
 }
 
-button>svg,
-.upload-button>svg,
-.icon-link>svg,
-.icon-button>svg {
+button > svg,
+.upload-button > svg,
+.icon-link > svg,
+.icon-button > svg {
   flex: 0 0 auto;
 }
 
 button:hover,
 .upload-button:hover,
 .icon-link:hover {
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset, 0 12px 26px rgba(10, 132, 255, 0.22);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.3) inset,
+    0 12px 26px rgba(10, 132, 255, 0.22);
   transform: translateY(-1px);
 }
 
@@ -200,7 +207,8 @@ textarea {
   min-height: 44px;
   padding: 0.72rem 0.82rem;
   width: 100%;
-  transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+  transition: border-color 150ms ease, box-shadow 150ms ease,
+    background 150ms ease;
 }
 
 textarea {
@@ -317,6 +325,12 @@ th {
   padding: 0.36rem;
 }
 
+.brand-logo {
+  display: block;
+  height: 48px;
+  width: 48px;
+}
+
 .brand span {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -331,7 +345,7 @@ th {
   justify-content: flex-end;
 }
 
-.nav-meta>span {
+.nav-meta > span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -420,7 +434,7 @@ th {
   padding: 2rem;
 }
 
-.connect-screen>svg {
+.connect-screen > svg {
   background: linear-gradient(135deg, var(--teal-soft), var(--primary-soft));
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
@@ -460,7 +474,11 @@ th {
 
 .dashboard-header {
   align-items: center;
-  background: linear-gradient(135deg, var(--surface-glass), rgba(255, 255, 255, 0.42));
+  background: linear-gradient(
+    135deg,
+    var(--surface-glass),
+    rgba(255, 255, 255, 0.42)
+  );
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-soft);
@@ -472,12 +490,16 @@ th {
   padding: 1.15rem;
 }
 
-.dashboard-header>div {
+.dashboard-header > div {
   min-width: 0;
 }
 
 :root[data-theme="dark"] .dashboard-header {
-  background: linear-gradient(135deg, rgba(22, 31, 42, 0.88), rgba(22, 31, 42, 0.42));
+  background: linear-gradient(
+    135deg,
+    rgba(22, 31, 42, 0.88),
+    rgba(22, 31, 42, 0.42)
+  );
 }
 
 .dashboard-header h1 {
@@ -687,15 +709,15 @@ th {
   white-space: nowrap;
 }
 
-.tabs button>svg,
-.segmented button>svg {
+.tabs button > svg,
+.segmented button > svg {
   color: currentColor;
   flex-shrink: 0;
   opacity: 0.78;
 }
 
-.tabs button.active>svg,
-.segmented button.active>svg {
+.tabs button.active > svg,
+.segmented button.active > svg {
   color: var(--primary);
   opacity: 1;
 }
@@ -714,7 +736,8 @@ th {
 .tabs button.active,
 .segmented button.active {
   background: var(--bg-elevated);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset, 0 7px 18px rgba(15, 35, 55, 0.1);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 7px 18px rgba(15, 35, 55, 0.1);
   color: var(--text-strong);
 }
 
@@ -771,7 +794,7 @@ th {
   min-width: 0;
 }
 
-.panel-title-row>* {
+.panel-title-row > * {
   min-width: 0;
 }
 
@@ -791,14 +814,14 @@ th {
   margin: 0;
 }
 
-.panel-title-row h2>svg,
-.panel-title-row h3>svg,
-.request-list h3>svg,
-.record-list h3>svg,
-.history-list-header h3>svg,
-.upload-panel h2>svg,
-.info-stack h2>svg,
-.result-card h2>svg {
+.panel-title-row h2 > svg,
+.panel-title-row h3 > svg,
+.request-list h3 > svg,
+.record-list h3 > svg,
+.history-list-header h3 > svg,
+.upload-panel h2 > svg,
+.info-stack h2 > svg,
+.result-card h2 > svg {
   background: linear-gradient(135deg, var(--primary-soft), var(--teal-soft));
   border-radius: 10px;
   color: var(--primary);
@@ -808,14 +831,14 @@ th {
   width: 30px;
 }
 
-:root[data-theme="dark"] .panel-title-row h2>svg,
-:root[data-theme="dark"] .panel-title-row h3>svg,
-:root[data-theme="dark"] .request-list h3>svg,
-:root[data-theme="dark"] .record-list h3>svg,
-:root[data-theme="dark"] .history-list-header h3>svg,
-:root[data-theme="dark"] .upload-panel h2>svg,
-:root[data-theme="dark"] .info-stack h2>svg,
-:root[data-theme="dark"] .result-card h2>svg {
+:root[data-theme="dark"] .panel-title-row h2 > svg,
+:root[data-theme="dark"] .panel-title-row h3 > svg,
+:root[data-theme="dark"] .request-list h3 > svg,
+:root[data-theme="dark"] .record-list h3 > svg,
+:root[data-theme="dark"] .history-list-header h3 > svg,
+:root[data-theme="dark"] .upload-panel h2 > svg,
+:root[data-theme="dark"] .info-stack h2 > svg,
+:root[data-theme="dark"] .result-card h2 > svg {
   background: rgba(10, 132, 255, 0.16);
   color: #6cb6ff;
 }
@@ -897,19 +920,19 @@ th {
   min-width: 0;
 }
 
-.upload-status-main>svg,
-.access-status-main>svg {
+.upload-status-main > svg,
+.access-status-main > svg {
   color: var(--primary);
   flex: 0 0 auto;
 }
 
-.upload-status.success .upload-status-main>svg,
-.access-status.success .access-status-main>svg {
+.upload-status.success .upload-status-main > svg,
+.access-status.success .access-status-main > svg {
   color: var(--mint);
 }
 
-.upload-status.error .upload-status-main>svg,
-.access-status.error .access-status-main>svg {
+.upload-status.error .upload-status-main > svg,
+.access-status.error .access-status-main > svg {
   color: var(--danger);
 }
 
@@ -993,7 +1016,8 @@ th {
   gap: 1rem;
   grid-template-columns: 50px minmax(0, 1fr) auto;
   padding: 1rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .record-card:hover {
@@ -1103,7 +1127,7 @@ th {
   margin-bottom: 1rem;
 }
 
-.modal-header>div {
+.modal-header > div {
   min-width: 0;
 }
 
@@ -1170,7 +1194,8 @@ th {
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) auto;
   padding: 0.95rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .history-row:hover {
@@ -1240,7 +1265,8 @@ th {
   justify-content: space-between;
   padding: 1rem;
   position: relative;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .panel-title-row {
@@ -1269,7 +1295,7 @@ th {
   min-width: 0;
 }
 
-.doctor-row>span {
+.doctor-row > span {
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -1334,7 +1360,8 @@ th {
   line-height: 1;
   min-height: 44px;
   padding: 0.76rem 1rem;
-  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease,
+    background 160ms ease;
   user-select: none;
 }
 
@@ -1506,6 +1533,18 @@ input[type="checkbox"]:disabled {
   position: relative;
 }
 
+.risk-breakdown {
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.7rem;
+}
+
+.risk-breakdown span {
+  overflow-wrap: anywhere;
+}
+
 .risk-fill {
   border-radius: inherit;
   height: 100%;
@@ -1597,7 +1636,7 @@ input[type="checkbox"]:disabled {
 :root[dir="rtl"] .modal-header span,
 :root[dir="rtl"] .request-row span,
 :root[dir="rtl"] .history-main span,
-:root[dir="rtl"] .doctor-row>span {
+:root[dir="rtl"] .doctor-row > span {
   direction: rtl;
   unicode-bidi: isolate;
   text-align: right;
@@ -1615,11 +1654,13 @@ bdi {
 }
 
 :root {
-  --toastify-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, "Segoe UI", sans-serif;
+  --toastify-font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    Inter, "Segoe UI", sans-serif;
 }
 
 :root[data-language="ku"] {
-  --toastify-font-family: Vazirmatn, "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
+  --toastify-font-family: Vazirmatn, "Noto Sans Arabic", "Segoe UI", Tahoma,
+    Arial, sans-serif;
 }
 
 .Toastify__toast-container {
@@ -1634,7 +1675,8 @@ bdi {
 }
 
 .healthtrust-toast {
-  animation: toast-rise 260ms ease both, toast-force-hide 420ms ease 3.6s forwards;
+  animation: toast-rise 260ms ease both,
+    toast-force-hide 420ms ease 3.6s forwards;
   backdrop-filter: blur(18px);
   background: rgba(255, 255, 255, 0.88) !important;
   border: 1px solid rgba(25, 48, 72, 0.12);
@@ -1658,7 +1700,7 @@ bdi {
   font-size: 0.95rem;
 }
 
-.Toastify__toast-body>div:last-child {
+.Toastify__toast-body > div:last-child {
   white-space: normal;
   overflow-wrap: anywhere;
   text-overflow: clip;
@@ -1715,7 +1757,6 @@ bdi {
 }
 
 @media (max-width: 860px) {
-
   .navbar,
   .dashboard-header,
   .record-card,
@@ -1876,9 +1917,9 @@ bdi {
     align-items: stretch;
   }
 
-  .row-actions>*,
-  .record-actions>*,
-  .button-row>* {
+  .row-actions > *,
+  .record-actions > *,
+  .button-row > * {
     flex: 1 1 auto;
   }
 
@@ -1902,7 +1943,6 @@ bdi {
 }
 
 @media (max-width: 420px) {
-
   button,
   .upload-button,
   .icon-link,
@@ -1921,7 +1961,7 @@ bdi {
     justify-content: stretch;
   }
 
-  .nav-meta>span {
+  .nav-meta > span {
     grid-column: 1 / -1;
   }
 

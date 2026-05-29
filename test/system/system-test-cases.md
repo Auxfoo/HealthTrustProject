@@ -11,10 +11,11 @@ System testing checks HealthTrust from the user's point of view across patient, 
 | Backend automated tests | PASS, 4 tests passed |
 | Blockchain local Hardhat tests | PASS, 3 tests passed |
 | Frontend production build | PASS |
-| ML model training | PASS, accuracy 0.9689 |
-| ML prediction smoke test | PASS, prediction 0 and probability 0.08 |
+| ML model training | PASS, accuracy 0.97 and Brier score 0.0237 |
+| ML prediction smoke test | PASS, prediction 1, probability 0.8287, model probability 0.0553, clinical probability 0.8287 |
+| Glucose context check | PASS, same glucose value changes risk by context and the 199/200 glucose transition is smooth |
 
-All results verified on 2026-05-28.
+Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
 
 ## Full System Startup
 
@@ -55,6 +56,7 @@ http://localhost:5173
 | Test funds | Sepolia ETH for wallets that send transactions |
 | Storage | Pinata credentials configured in backend `.env` |
 | Contract | `backend\.env` `CONTRACT_ADDRESS` matches `shared\contractConfig.js` |
+| Frontend status RPC | `frontend\.env` `VITE_SEPOLIA_RPC_URL` points to a working Sepolia JSON-RPC endpoint |
 | Test data | Fake PDFs from `sample_records` |
 
 ## End-To-End Validation Matrix
@@ -75,7 +77,7 @@ http://localhost:5173
 | TC12 | Remove institution doctor | Doctor receives a notification and loses institution-based access. |
 | TC13 | Doctor decrypts record | Doctor clicks View, MetaMask decrypts the key envelope, and the original file downloads. |
 | TC14 | PDF prediction auto-fill | Readable diabetes vitals PDF fills the prediction form. |
-| TC15 | Diabetes prediction | Risk result, probability meter, contributing-values card, and prediction history update. |
+| TC15 | Diabetes prediction | Risk result, probability meter, glucose context, contributing-values card, and prediction history update. |
 | TC16 | Doctor note | Patient sees the note and the doctor Notes History updates. |
 | TC17 | Doctor care document | Patient sees the care document and doctor Documents History updates. |
 | TC18 | Care-document PDF export | Downloaded PDF opens with HealthTrust branding, metadata cards, visual accents, and readable content. |
@@ -99,7 +101,8 @@ http://localhost:5173
 | TC36 | Full prediction history | Doctor prediction history shows all records. A doctor with more than 50 predictions can see all of them. |
 | TC37 | loadRecords error handling | If backend is unavailable when patient loads dashboard, a toast error appears rather than a silent failure. |
 | TC38 | RTL wallet addresses | In Kurdish mode, wallet addresses in doctor Documents and Prediction History tabs remain left-to-right and do not break layout. |
-| TC39 | Service status bar | Service status bar shows live status for Backend, ML, and Sepolia. Refresh button updates all three. Sepolia shows offline when network is unreachable. |
+| TC39 | Service status bar | Service status bar shows live status for Backend, ML, and Sepolia using `VITE_API_URL`, `VITE_ML_URL`, and `VITE_SEPOLIA_RPC_URL`. Refresh button updates all three. Sepolia shows offline when the configured RPC endpoint is unreachable. |
+| TC40 | Glucose context | Doctor selects unknown, fasting, random, or 2-hour/after-meal context. A glucose value of 180 is interpreted differently by context, and 199/200 does not create a large hard-threshold jump. |
 
 ## Demonstration Flow
 
@@ -109,7 +112,7 @@ http://localhost:5173
 4. Patient toggles Important and Emergency-visible flags.
 5. Patient grants doctor access from Manage Access.
 6. Doctor views and decrypts the record.
-7. Doctor runs the diabetes prediction and reviews History.
+7. Doctor selects glucose test context, runs the diabetes prediction, and reviews History.
 8. Doctor adds a note and sends a care document.
 9. Patient reviews notes/documents and downloads the branded care-document PDF.
 10. Patient exports the audit PDF.

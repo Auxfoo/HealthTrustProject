@@ -52,7 +52,7 @@ Excluded from this prototype:
 | Role | Can do |
 | --- | --- |
 | Patient | Register profile (blood type from a validated select, allergies, chronic conditions, emergency contact), upload encrypted PDF/image records with visible upload status, add metadata, archive records, mark important and emergency-visible records, grant/revoke doctor access, grant/revoke institution access, resend/share keys, approve/reject access requests, view doctor notes with formatted status labels, view care documents, download branded care-document PDFs, export branded audit-report PDFs, see notifications, view audit history, and review the security model. |
-| Doctor | Register profile and MetaMask encryption public key, choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, run predictions, view full prediction history (no count cap), add notes to records, send care documents linked to records, request institution membership, and see notifications. All forms are fully bilingual (Kurdish / English). |
+| Doctor | Register profile and MetaMask encryption public key, choose an institution during signup to create an automatic membership request, view only accessible records with matching key envelopes, decrypt/download original records, request emergency access from an emergency-record dropdown that hides already accessible records, auto-fill diabetes prediction inputs from readable diabetes vitals PDFs, choose glucose test context, run predictions, view full prediction history (no count cap), add notes to records, send care documents linked to records, request institution membership, and see notifications. All forms are fully bilingual (Kurdish / English). |
 | Institution admin | Register a hospital or clinic, approve/reject doctor membership requests, manually add/remove doctors, notify removed doctors, view records granted to the institution, inspect shared-key counts, review analytics/audit history, export branded institution audit-report PDFs, see notifications, and review the security model. |
 
 ## Architecture
@@ -72,7 +72,8 @@ Sepolia Smart Contract
   | record CIDs, permissions, institutions, doctor membership, audit events
 
 FastAPI ML Service
-  | scikit-learn RandomForestClassifier
+  | calibrated scikit-learn HistGradientBoostingClassifier
+  | clinical probability blend
   v
 Diabetes prediction and probability
 ```
@@ -124,11 +125,12 @@ Frontend `.env` needs:
 ```env
 VITE_API_URL=http://localhost:5000
 VITE_ML_URL=http://localhost:8000
+VITE_SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/your_api_key
 ```
 
-`VITE_ML_URL` controls the ML service URL shown in the service status bar. Defaults to `http://localhost:8000` if omitted.
+`VITE_ML_URL` controls the ML service URL shown in the service status bar. `VITE_SEPOLIA_RPC_URL` controls the frontend's live Sepolia JSON-RPC status check and defaults to `https://rpc.sepolia.org` if omitted.
 
-Use real Sepolia RPC URLs for demos. The backend can fall back to a public Sepolia provider for some read-only record lookups if `SEPOLIA_RPC_URL` is still the placeholder value, but deploys, server-side proxy writes, and reliable demos should use a real Alchemy/Infura/custom RPC URL.
+Use real Sepolia RPC URLs for demos in both backend/blockchain `SEPOLIA_RPC_URL` and frontend `VITE_SEPOLIA_RPC_URL`. The backend can fall back to a public Sepolia provider for some read-only record lookups if `SEPOLIA_RPC_URL` is still the placeholder value, but deploys, server-side proxy writes, live frontend status checks, and reliable demos should use a real Alchemy/Infura/custom RPC URL.
 
 ## Install
 
@@ -180,6 +182,14 @@ The model expects these fields:
 gender, age, hypertension, heart_disease, smoking_history, bmi, HbA1c_level, blood_glucose_level
 ```
 
+The prediction API also accepts `glucose_context` with one of these values:
+
+```text
+unknown, fasting, random, post_meal
+```
+
+`glucose_context` is not part of the Kaggle training dataset. It is used by HealthTrust's clinical-rule probability blend so the same glucose value can be interpreted differently when it is fasting, random, after-meal/2-hour, or unknown.
+
 Train the model:
 
 ```powershell
@@ -188,7 +198,7 @@ cd ml_service
 python train.py
 ```
 
-This creates `ml_service\model.pkl`.
+This trains a calibrated `HistGradientBoostingClassifier` pipeline with one-hot encoded categorical fields, monotonic constraints on numeric risk features, and isotonic probability calibration. It creates `ml_service\model.pkl`. At prediction time, the API validates realistic input ranges and returns both the trained model probability and a clinical-rule probability alongside the blended final probability. The clinical-rule layer uses `glucose_context` to avoid treating fasting, random, and after-meal glucose values as identical.
 
 ## Smart Contract
 
@@ -282,7 +292,7 @@ Suggested report mapping:
 
 Automated checks:
 
-Latest automated check date: 2026-05-28.
+Latest full automated check date: 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
 
 ```powershell
 cd backend
@@ -311,7 +321,9 @@ ML prediction smoke test:
 cd ml_service
 @'
 import main
-main.load_model()
+import joblib
+
+main.model = joblib.load(main.MODEL_PATH)
 payload = main.DiabetesInput(
     gender="Female",
     age=54,
@@ -321,6 +333,7 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
+    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -329,7 +342,7 @@ print(main.predict(payload))
 Expected output shape:
 
 ```text
-{'prediction': 0, 'probability': 0.08}
+{'prediction': 1, 'probability': 0.8286566366692054, 'modelProbability': 0.05526340771454772, 'clinicalProbability': 0.8286566366692054}
 ```
 
 Latest local automated results:
@@ -339,10 +352,10 @@ Latest local automated results:
 | Backend tests | PASS, 4 passed |
 | Blockchain tests | PASS, 3 passing |
 | Frontend production build | PASS |
-| ML training | PASS, accuracy 0.9689 |
-| ML prediction smoke test | PASS, prediction 0, probability 0.08 |
+| ML training | PASS, accuracy 0.97, Brier score 0.0237 |
+| ML prediction smoke test | PASS, prediction 1, probability 0.8287, includes model and clinical probabilities |
 
-All results verified on 2026-05-28.
+Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
 
 Testing evidence and manual test cases are stored in `test`.
 
@@ -412,7 +425,7 @@ Use at least three MetaMask accounts: one patient, one doctor, and one instituti
 13. Patient downloads the branded care-document PDF.
 14. Patient exports a branded audit-report PDF.
 15. Doctor views `sample_diabetes_vitals.pdf`; prediction fields should auto-fill.
-16. Doctor submits prediction and confirms History is updated.
+16. Doctor selects the glucose test context, submits prediction, and confirms History is updated.
 17. Doctor checks the emergency request dropdown and confirms already accessible records are hidden.
 18. Admin removes the doctor and doctor receives a notification.
 
@@ -436,6 +449,7 @@ test/
 - Pinata/IPFS gateway availability affects retrieval.
 - Institution admins are self-registered; there is no real-world KYC.
 - The ML result is not a clinical diagnosis.
+- Glucose interpretation depends on whether the reading is fasting, random, or after-meal/2-hour; the app captures this context for the clinical-rule blend but still remains a prototype.
 - No formal security audit has been performed.
 - Local database resets do not reset smart-contract state on Sepolia; redeploy the contract for a completely clean on-chain demo.
 
@@ -447,7 +461,10 @@ test/
 - Pinata documentation: https://docs.pinata.cloud/
 - MetaMask developer documentation: https://docs.metamask.io/
 - FastAPI documentation: https://fastapi.tiangolo.com/
-- scikit-learn RandomForestClassifier: https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
+- scikit-learn HistGradientBoostingClassifier: https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.HistGradientBoostingClassifier.html
+- scikit-learn CalibratedClassifierCV: https://scikit-learn.org/stable/modules/generated/sklearn.calibration.CalibratedClassifierCV.html
+- CDC diabetes testing overview: https://www.cdc.gov/diabetes/diabetes-testing/index.html
+- ADA diabetes diagnosis overview: https://diabetes.org/about-diabetes/diagnosis
 - Diabetes prediction dataset: https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset
 
 ## Conclusion And Future Work

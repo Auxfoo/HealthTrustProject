@@ -42,7 +42,9 @@ ML prediction smoke test:
 cd ml_service
 @'
 import main
-main.load_model()
+import joblib
+
+main.model = joblib.load(main.MODEL_PATH)
 payload = main.DiabetesInput(
     gender="Female",
     age=54,
@@ -52,6 +54,7 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
+    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -66,8 +69,11 @@ Date: 2026-05-28
 | Backend auth tests | 4 passed, 0 failed |
 | Smart contract tests | 3 passed, 0 failed |
 | Frontend build | Passed |
-| ML training | Passed, accuracy 0.9689 |
-| ML prediction smoke test | Passed, prediction 0, probability 0.08 |
+| ML training | Passed, accuracy 0.97, Brier score 0.0237 |
+| ML prediction smoke test | Passed, prediction 1, probability 0.8287, includes model and clinical probabilities |
+| Glucose context check | Passed, fasting glucose context changes the clinical probability blend |
+
+Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
 
 ## Manual Testing Requirement
 
@@ -98,6 +104,7 @@ Some workflows cannot be completed by terminal commands because they require bro
 - Doctor prediction history showing full history (no 50-record cap)
 - Doctor notes and care document forms in Kurdish
 - Audit PDF excluding null record IDs (notification rows show no Record # prefix)
-- Service status bar ML URL and live Sepolia check
+- Service status bar ML URL (`VITE_ML_URL`) and live Sepolia check (`VITE_SEPOLIA_RPC_URL`)
+- Glucose test context dropdown and smoothed glucose interpretation in prediction results
 
 Use `system/system-test-cases.md` and `usability/usability-test-plan.md` for those.

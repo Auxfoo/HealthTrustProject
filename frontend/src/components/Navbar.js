@@ -1,5 +1,5 @@
 import React from "react";
-import { Activity, Clipboard, LogIn, LogOut, Moon, Sun } from "lucide-react";
+import { Clipboard, LogIn, LogOut, Moon, Sun } from "lucide-react";
 import { toast } from "react-toastify";
 import { useWallet } from "../context/WalletContext";
 import { useLanguage } from "../i18n";
@@ -21,7 +21,7 @@ export default function Navbar() {
   return (
     <header className="navbar">
       <div className="brand">
-        <Activity size={22} />
+        <img src="/healthtrust-logo.png" alt="" aria-hidden="true" className="brand-logo" />
         <span>HealthTrust</span>
       </div>
       <div className="nav-meta">

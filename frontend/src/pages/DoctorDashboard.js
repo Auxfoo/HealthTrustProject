@@ -56,6 +56,7 @@ const emptyPredictionValues = {
   bmi: "",
   HbA1c_level: "",
   blood_glucose_level: "",
+  glucose_context: "unknown",
 };
 
 const predictionFields = [
@@ -67,7 +68,15 @@ const predictionFields = [
   { key: "bmi", labels: ["BMI"] },
   { key: "HbA1c_level", labels: ["HbA1c level", "HbA1c"] },
   { key: "blood_glucose_level", labels: ["Blood glucose level", "Blood Glucose"] },
+  { key: "glucose_context", labels: ["Glucose test context", "Glucose Context"], optional: true },
 ];
+
+const glucoseContextLabels = {
+  unknown: "Unknown / not sure",
+  fasting: "Fasting",
+  random: "Random",
+  post_meal: "2-hour / after meal",
+};
 
 function cleanPdfTextValue(value) {
   return value
@@ -92,6 +101,13 @@ function normalizeExtractedValue(field, value) {
     const normalized = cleanedValue.toLowerCase();
     const options = ["never", "current", "former", "ever", "not current"];
     return options.includes(normalized) ? normalized : "No Info";
+  }
+  if (field === "glucose_context") {
+    const normalized = cleanedValue.toLowerCase().replace(/[-\s]+/g, "_");
+    if (["fasting", "fasted"].includes(normalized)) return "fasting";
+    if (["random", "casual"].includes(normalized)) return "random";
+    if (["post_meal", "after_meal", "2_hour", "two_hour", "ogtt"].includes(normalized)) return "post_meal";
+    return "unknown";
   }
   return cleanedValue.match(/-?\d+(?:\.\d+)?/)?.[0] || cleanedValue;
 }
@@ -320,8 +336,23 @@ export default function DoctorDashboard() {
     const hba1c = Number(predictionValues.HbA1c_level);
     const bmi = Number(predictionValues.bmi);
     const age = Number(predictionValues.age);
+    const glucoseContext = predictionValues.glucose_context || "unknown";
     if (Number.isFinite(hba1c) && hba1c >= 6.5) factors.push("HbA1c is in a high range.");
-    if (Number.isFinite(glucose) && glucose >= 140) factors.push("Blood glucose is elevated.");
+    if (Number.isFinite(glucose)) {
+      if (glucoseContext === "fasting" && glucose >= 126) {
+        factors.push("Fasting glucose is in a diabetes-range marker.");
+      } else if (glucoseContext === "fasting" && glucose >= 100) {
+        factors.push("Fasting glucose is elevated.");
+      } else if (glucoseContext === "post_meal" && glucose >= 200) {
+        factors.push("2-hour glucose is in a diabetes-range marker.");
+      } else if (glucoseContext === "post_meal" && glucose >= 140) {
+        factors.push("2-hour / after-meal glucose is elevated.");
+      } else if (glucoseContext === "random" && glucose >= 200) {
+        factors.push("Random glucose is in a high range.");
+      } else if (glucose >= 140) {
+        factors.push("Blood glucose is elevated; interpretation depends on test context.");
+      }
+    }
     if (Number.isFinite(bmi) && bmi >= 30) factors.push("BMI is in an obesity range.");
     if (Number.isFinite(age) && age >= 55) factors.push("Age increases diabetes risk in the model.");
     if (predictionValues.hypertension === "1") factors.push("Hypertension is present.");
@@ -943,6 +974,15 @@ export default function DoctorDashboard() {
             <div className="result-card">
               <h2><BrainCircuit size={18} />{result.prediction === 1 ? t("Diabetic Risk Indicated") : t("No Diabetic Risk Indicated")}</h2>
               <RiskMeter probability={result.probability} />
+              <div className="risk-breakdown">
+                <span>{t("Glucose context")}: {t(glucoseContextLabels[predictionValues.glucose_context] || glucoseContextLabels.unknown)}</span>
+                {Number.isFinite(result.modelProbability) && (
+                  <span>{t("Model")}: {formatNumber(Math.round(result.modelProbability * 100))}%</span>
+                )}
+                {Number.isFinite(result.clinicalProbability) && (
+                  <span>{t("Clinical rules")}: {formatNumber(Math.round(result.clinicalProbability * 100))}%</span>
+                )}
+              </div>
               <div className="request-list">
                 <article className="request-row">
                   <div>
@@ -965,6 +1005,7 @@ export default function DoctorDashboard() {
             <article className="request-row" key={row.id}>
               <strong>{localizeText(`${Math.round(row.probability * 100)}% risk`)}</strong>
               <span><bdi dir="ltr">{row.patientWallet || t("No patient linked")}</bdi></span>
+              <span>{t("Glucose context")}: {t(glucoseContextLabels[row.features?.glucose_context] || glucoseContextLabels.unknown)}</span>
               <small>{formatDate(row.createdAt)}</small>
             </article>
           ))}
