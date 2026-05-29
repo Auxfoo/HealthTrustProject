@@ -14,8 +14,7 @@ ml_service/.env
 ml_service/.venv/
 ml_service/__pycache__/
 ml_service/model.pkl
-ml_service/diabetes.csv
-ml_service/diabetes_prediction_dataset.csv
+
 
 *.log
 .DS_Store
