@@ -55,7 +55,9 @@ export default function NotificationsPanel() {
           <RefreshCw className={loading ? "spin-icon" : ""} size={16} />
         </button>
       </div>
-      <p className="muted">Showing notifications for {truncateWallet(walletAddress)}.</p>
+      <p className="muted">
+        {t("Showing notifications for")} <bdi dir="ltr">{truncateWallet(walletAddress)}</bdi>.
+      </p>
       {error && (
         <div className="notice">
           <strong>{t("Unable to load notifications")}</strong>

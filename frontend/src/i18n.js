@@ -160,6 +160,17 @@ const ku = {
   "No notifications": "هیچ ئاگادارکردنەوەیەک نییە",
   "Updates about access, notes, documents, and membership will appear here.": "نوێکارییەکانی دەستگەیشتن، تێبینی، بەڵگەنامە و ئەندامێتی لێرە دەردەکەون.",
   "Mark notification read": "نیشانکردنی ئاگادارکردنەوە وەک خوێندراوە",
+  "Refresh notifications": "نوێکردنەوەی ئاگادارکردنەوەکان",
+  "Unable to load notifications": "نەتوانرا ئاگادارکردنەوەکان بار بکرێن",
+  "Unable to fetch notifications": "نەتوانرا ئاگادارکردنەوەکان بار بکرێن",
+  "Showing notifications for": "ئاگادارکردنەوەکان بۆ",
+  "Notification": "ئاگادارکردنەوە",
+  "Record shared with institution": "تۆمار لەگەڵ دامەزراوە هاوبەش کرا",
+  "Institution record access revoked": "دەستگەیشتنی دامەزراوە بۆ تۆمار وەرگیرایەوە",
+  "Institution membership active": "ئەندامێتی دامەزراوە چالاکە",
+  "Doctor added to institution": "پزیشک بۆ دامەزراوە زیاد کرا",
+  "Removed from institution": "لە دامەزراوە لابرا",
+  "Doctor removed from institution": "پزیشک لە دامەزراوە لابرا",
   "Gender": "ڕەگەز",
   "Age": "تەمەن",
   "Hypertension": "بەرزی پەستانی خوێن",
@@ -492,6 +503,7 @@ Object.assign(ku, technicalEnglishKu);
 Object.assign(ku, {
   Security: "پاراستن",
   Notifications: "ئاگادارکردنەوەکان",
+  Notification: "ئاگادارکردنەوە",
   Audit: "وردبینی",
   History: "مێژوو",
   Analytics: "شیکاری",
@@ -523,7 +535,7 @@ Object.assign(ku, {
   "Audit Events": "ڕووداوەکانی وردبینی",
   "Audit Timeline": "مێژووی وردبینی",
   "Doctor Audit Timeline": "مێژووی وردبینی دکتۆر",
-  "Institution Audit Timeline": "مێژووی وردبینی Institution",
+  "Institution Audit Timeline": "مێژووی وردبینی دامەزراوە",
   "No History": "هیچ مێژووێک نییە",
   "No history": "هیچ مێژووێک نییە",
   "Membership History": "مێژووی ئەندامێتی",
@@ -582,12 +594,20 @@ const kuPhraseRules = [
   [/A key envelope is available for record #(\d+)\./g, "پاکەتی کلیل بۆ تۆمار #$1 بەردەستە."],
   [/Your key envelope for record #(\d+) was removed\./g, "پاکەتی کلیلت بۆ تۆمار #$1 لابرا."],
   [/Record #(\d+) was reviewed\./g, "تۆمار #$1 پێداچوونەوەی بۆ کرا."],
-  [/A doctor ran a diabetes prediction with (\d+)% risk probability/g, "A doctor ran a diabetes prediction with $1% risk probability"],
+  [/A doctor ran a diabetes prediction with (\d+)% risk probability/g, "پزیشکێک پێشبینی شەکرەی بە ئەگەری مەترسی $1% ئەنجام دا"],
+  [/Record #(\d+) was shared with (.+)\./g, "تۆمار #$1 لەگەڵ $2 هاوبەش کرا."],
+  [/Record #(\d+) was no longer shared with (.+)\./g, "تۆمار #$1 چیتر لەگەڵ $2 هاوبەش نەکرا."],
+  [/(.+) is registered in HealthTrust\./g, "$1 لە HealthTrust تۆمارکرا."],
+  [/You were added to (.+)\./g, "تۆ بۆ $1 زیاد کرایت."],
+  [/You were removed from (.+)\./g, "تۆ لە $1 لابرایت."],
+  [/([^ ]+) was (approved|rejected|pending) for (.+)\./g, (_match, wallet, status, name) => `${wallet} بۆ ${name} ${translateStatus(status, "ku")}.`],
+  [/([^ ]+) was added to (.+)\./g, "$1 بۆ $2 زیاد کرا."],
+  [/([^ ]+) was removed from (.+)\./g, "$1 لە $2 لابرا."],
   [/Status: (pending|approved|rejected|reviewed|follow_up|urgent) - key shared: (yes|no)/g, (_match, status, shared) => `دۆخ: ${translateStatus(status, "ku")} - کلیلی هاوبەشکراو: ${shared === "yes" ? "بەڵێ" : "نەخێر"}`],
   [/Status: (pending|approved|rejected|reviewed|follow_up|urgent)/g, (_match, status) => `دۆخ: ${translateStatus(status, "ku")}`],
   [/Doctor note saved/g, "تێبینی پزیشک پاشەکەوت کرا"],
   [/Care document sent/g, "بەڵگەنامەی چاودێری نێردرا"],
-  [/Diabetes prediction run/g, "Diabetes prediction run"],
+  [/Diabetes prediction run/g, "پێشبینی شەکرە ئەنجام درا"],
   [/AccessGrantedToDoctor/g, "دەستگەیشتن بۆ پزیشک پێدرا"],
   [/AccessRevokedFromDoctor/g, "دەستگەیشتنی پزیشک وەرگیرایەوە"],
   [/AccessGrantedToInstitution/g, "دەستگەیشتن بۆ دامەزراوە پێدرا"],
@@ -695,16 +715,6 @@ const enPhraseRules = [
 const LanguageContext = createContext(null);
 
 function translateStatus(status, language) {
-  if (language === "ku") {
-    return {
-      approved: "approved",
-      rejected: "rejected",
-      pending: "pending",
-      reviewed: "reviewed",
-      follow_up: "follow up",
-      urgent: "urgent",
-    }[status] || status;
-  }
   const kuStatuses = {
     approved: "پەسەندکراوە",
     rejected: "ڕەتکراوەتەوە",
@@ -718,14 +728,6 @@ function translateStatus(status, language) {
 }
 
 function translateCategory(category) {
-  return {
-    lab: "Lab",
-    prescription: "Prescription",
-    diagnosis: "Diagnosis",
-    imaging: "Imaging",
-    other: "Other",
-  }[category] || category;
-
   return {
     lab: "تاقیگە",
     prescription: "ڕێنمایی دەرمان",
