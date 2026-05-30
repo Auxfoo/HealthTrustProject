@@ -137,6 +137,7 @@ export default function DoctorDashboard() {
   const [records, setRecords] = useState([]);
   const [metadata, setMetadata] = useState({});
   const [emergencyRecords, setEmergencyRecords] = useState([]);
+  const [emergencyOverviewRecords, setEmergencyOverviewRecords] = useState([]);
   const [institutions, setInstitutions] = useState([]);
   const [loadingInstitutions, setLoadingInstitutions] = useState(true);
   const [membershipRequests, setMembershipRequests] = useState([]);
@@ -196,7 +197,7 @@ export default function DoctorDashboard() {
         return response.data;
       })
       .catch((error) => {
-        toast.error(error.response?.data?.message || error.message || t("Unable to load institutions"));
+        toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to load institutions"));
         return [];
       })
       .finally(() => setLoadingInstitutions(false));
@@ -207,7 +208,7 @@ export default function DoctorDashboard() {
         return response.data;
       })
       .catch((error) => {
-        toast.error(error.response?.data?.message || error.message || t("Unable to load membership requests"));
+        toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to load membership requests"));
         return [];
       });
 
@@ -215,23 +216,37 @@ export default function DoctorDashboard() {
     const allIds = allRecords.map((record) => record.id).join(",");
     if (allIds) {
       const [allMeta, accessRequestResponse] = await Promise.all([
-        axios.get(`${API_URL}/api/records/metadata/bulk?ids=${allIds}`),
+        axios.get(`${API_URL}/api/records/metadata/bulk?ids=${allIds}`, { headers }),
         axios.get(`${API_URL}/api/access-requests`, { headers }),
       ]);
       const allMetadataById = Object.fromEntries(allMeta.data.map((row) => [row.recordId, row]));
       const accessChecks = await Promise.all(allRecords.map((record) => hasAccess(record.id, walletAddress)));
-      const blockedEmergencyRecordIds = new Set(
+      const activeEmergencyRequestsByRecordId = new Map(
         accessRequestResponse.data
           .filter((request) => ["pending", "approved"].includes(request.status))
-          .map((request) => Number(request.recordId))
+          .map((request) => [Number(request.recordId), request])
       );
-      setEmergencyRecords(
-        allRecords
-          .filter((record, index) => allMetadataById[record.id]?.emergency && !accessChecks[index] && !blockedEmergencyRecordIds.has(record.id))
-          .map((record) => ({ ...record, metadata: allMetadataById[record.id] }))
-      );
+      const emergencyRows = allRecords
+        .map((record, index) => {
+          const request = activeEmergencyRequestsByRecordId.get(record.id);
+          const hasCurrentAccess = accessChecks[index];
+          const canRequest = !hasCurrentAccess && !request;
+          let emergencyStatus = "Available for emergency request";
+          if (hasCurrentAccess) emergencyStatus = "Already accessible in Records tab";
+          if (request) emergencyStatus = `Emergency request ${request.status}`;
+          return {
+            ...record,
+            metadata: allMetadataById[record.id],
+            emergencyStatus,
+            canRequestEmergencyAccess: canRequest,
+          };
+        })
+        .filter((record) => record.metadata?.emergency);
+      setEmergencyOverviewRecords(emergencyRows);
+      setEmergencyRecords(emergencyRows.filter((record) => record.canRequestEmergencyAccess));
     } else {
       setEmergencyRecords([]);
+      setEmergencyOverviewRecords([]);
     }
     const checks = await Promise.all(allRecords.map((record) => hasAccess(record.id, walletAddress)));
     const chainAccessible = allRecords.filter((_, index) => checks[index]);
@@ -248,7 +263,7 @@ export default function DoctorDashboard() {
 
     const ids = accessible.map((record) => record.id).join(",");
     if (ids) {
-      const meta = await axios.get(`${API_URL}/api/records/metadata/bulk?ids=${ids}`);
+      const meta = await axios.get(`${API_URL}/api/records/metadata/bulk?ids=${ids}`, { headers });
       setMetadata(Object.fromEntries(meta.data.map((row) => [row.recordId, row])));
     } else {
       setMetadata({});
@@ -423,7 +438,7 @@ export default function DoctorDashboard() {
       URL.revokeObjectURL(url);
       toast.update(toastId, { render: t("Record decrypted"), type: "success", isLoading: false, autoClose: 3000 });
     } catch (error) {
-      toast.update(toastId, { render: localizeText(error.response?.data?.message || error.message), type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.response?.data?.error || error.response?.data?.message || error.message), type: "error", isLoading: false, autoClose: 5000 });
     }
   }
 
@@ -443,7 +458,7 @@ export default function DoctorDashboard() {
       setJoinForm((current) => ({ ...current, message: "" }));
       await loadAccessibleRecords();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("Unable to send membership request"));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to send membership request"));
     }
   }
 
@@ -471,7 +486,7 @@ export default function DoctorDashboard() {
       toast.success(t("Emergency access request sent"));
       setEmergencyForm({ patientWallet: "", recordId: "", reason: "" });
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("Unable to request emergency access"));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to request emergency access"));
     }
   }
 
@@ -496,7 +511,7 @@ export default function DoctorDashboard() {
       setNoteForm({ recordId: "", patientWallet: "", status: "reviewed", note: "" });
       await loadAccessibleRecords();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("Unable to save note"));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to save note"));
     }
   }
 
@@ -522,7 +537,7 @@ export default function DoctorDashboard() {
       setDocForm({ sourceRecordId: "", patientWallet: "", documentType: "prescription", title: "", content: "" });
       await loadAccessibleRecords();
     } catch (error) {
-      toast.update(toastId, { render: localizeText(error.response?.data?.message || error.reason || error.message), type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.response?.data?.error || error.response?.data?.message || error.reason || error.message), type: "error", isLoading: false, autoClose: 5000 });
     }
   }
 
@@ -688,17 +703,18 @@ export default function DoctorDashboard() {
               <strong>{t("Emergency mode")}</strong>
               <span>{t("Choose a record the patient marked emergency-visible. This sends a clearly labeled request and notification; the patient still controls final on-chain access and encrypted key sharing.")}</span>
             </div>
-            {emergencyRecords.map((record) => (
+            {emergencyOverviewRecords.map((record) => (
               <article className="request-row" key={record.id}>
                 <div>
                   <strong>{record.metadata?.title || record.metadata?.filename || localizeText(`Record #${record.id}`)}</strong>
                   <span>{localizeText(`Record #${record.id}`)}</span>
                   <span><bdi dir="ltr">{record.uploadedBy}</bdi></span>
                   <small>{localizeText(record.metadata?.category || "other")}</small>
+                  <small>{localizeText(record.emergencyStatus)}</small>
                 </div>
               </article>
             ))}
-            {emergencyRecords.length === 0 && (
+            {emergencyOverviewRecords.length === 0 && (
               <div className="empty-state">
                 <AlertTriangle size={28} />
                 <strong>{t("No Emergency-Visible Records")}</strong>
@@ -945,7 +961,7 @@ export default function DoctorDashboard() {
                   </div>
                 </article>
               </div>
-              <p>This is not a medical diagnosis.</p>
+              <p>This ML output is NOT a clinical diagnosis. A licensed clinician must review the patient context and confirm any care decision.</p>
             </div>
           )}
         </section>

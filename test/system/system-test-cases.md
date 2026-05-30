@@ -1,137 +1,42 @@
-# System Testing
+# System Test Cases
 
-Date: 2026-05-28
+Date: 2026-05-30
 
-System testing checks HealthTrust from the user's point of view across patient, doctor, and institution admin workflows.
+System testing requires MetaMask, Sepolia ETH, Pinata credentials, the backend, the ML service, and the frontend running locally.
 
 ## Automated Readiness Results
 
 | Area | Result |
 | --- | --- |
 | Backend automated tests | PASS, 4 tests passed |
-| Blockchain local Hardhat tests | PASS, 3 tests passed |
-| Frontend production build | PASS |
-| ML model training | PASS, accuracy 0.88, recall 0.88, and Brier score 0.0803 |
-| ML prediction smoke test | PASS, prediction and probability returned by the trained model |
+| Blockchain local Hardhat tests | PASS, 5 tests passed |
+| Frontend production build | PASS, Vite bundle-size warning only |
+| ML model training | PASS, accuracy 0.88 and Brier score 0.0803 |
+| ML prediction smoke test | PASS with `.\.venv\Scripts\python.exe smoke_test.py`: `{'prediction': 1, 'probability': 0.5260096618629037}` |
 
-Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, and ML prediction smoke test were re-verified on 2026-05-29 after the prediction update.
+## Manual Browser Workflow Cases
 
-## Full System Startup
-
-Backend:
-
-```powershell
-cd backend
-node server.js
-```
-
-ML service:
-
-```powershell
-cd ml_service
-.\.venv\Scripts\activate
-uvicorn main:app --reload
-```
-
-Frontend:
-
-```powershell
-cd frontend
-npm start
-```
-
-Open:
-
-```text
-http://localhost:5173
-```
-
-## Browser Test Environment
-
-| Requirement | Configuration |
-| --- | --- |
-| Network | Sepolia testnet |
-| Wallets | Separate MetaMask wallets for patient, doctor, and institution admin |
-| Test funds | Sepolia ETH for wallets that send transactions |
-| Storage | Pinata credentials configured in backend `.env` |
-| Contract | `backend\.env` `CONTRACT_ADDRESS` matches `shared\contractConfig.js` |
-| Frontend status RPC | `frontend\.env` `VITE_SEPOLIA_RPC_URL` points to a working Sepolia JSON-RPC endpoint |
-| Test data | Fake PDFs from `sample_records` |
-
-## End-To-End Validation Matrix
-
-| Test Case | Workflow | Expected Result |
-| --- | --- | --- |
-| TC01 | Patient registration | Patient dashboard opens for the registered wallet. |
-| TC02 | Doctor registration | Doctor dashboard opens and MetaMask encryption public key is saved. |
-| TC03 | Institution registration | Hospital or clinic is saved locally and registered on-chain. |
-| TC04 | Patient upload | File is encrypted in the browser, pinned to IPFS, written on-chain, and listed in patient records. |
-| TC05 | Upload status | UI shows encryption, IPFS upload, MetaMask confirmation, metadata save, and success/error states. |
-| TC06 | Record flags | Important and Emergency-visible flags save and remain visible after refresh. |
-| TC07 | Empty patient state | Empty records tab shows a clear empty-state message. |
-| TC08 | Grant doctor access | Doctor sees the record only after on-chain permission and key envelope both exist. |
-| TC09 | Revoke doctor access | Doctor loses future authorized access and the key envelope is removed. |
-| TC10 | Grant institution access | Institution admin sees the shared record and doctor key count. |
-| TC11 | New institution doctor | Newly added institution doctors need a patient-created key envelope before decrypting old shared records. |
-| TC12 | Remove institution doctor | Doctor receives a notification and loses institution-based access. |
-| TC13 | Doctor decrypts record | Doctor clicks View, MetaMask decrypts the key envelope, and the original file downloads. |
-| TC14 | PDF prediction auto-fill | Readable diabetes vitals PDF fills the prediction form. |
-| TC15 | Diabetes prediction | Risk result, probability meter, model input values, and prediction history update. |
-| TC16 | Doctor note | Patient sees the note and the doctor Notes History updates. |
-| TC17 | Doctor care document | Patient sees the care document and doctor Documents History updates. |
-| TC18 | Care-document PDF export | Downloaded PDF opens with HealthTrust branding, metadata cards, visual accents, and readable content. |
-| TC19 | Patient audit PDF export | Audit report opens with HealthTrust branding, metadata cards, and access timeline. |
-| TC20 | Institution audit PDF export | Institution report opens with operational summary, timeline, and security note. |
-| TC21 | Doctor membership request | Admin sees the request and doctor Membership History updates. |
-| TC22 | Automatic membership request | Selecting an institution during doctor registration creates a membership request. |
-| TC23 | Duplicate membership prevention | Existing requested or approved institutions are hidden from the doctor's membership dropdown. |
-| TC24 | Emergency access request | Patient sees the emergency request and can approve or reject access/key sharing. |
-| TC25 | Emergency dropdown filtering | Records already accessible to the doctor are hidden from the emergency request dropdown. |
-| TC26 | Notifications | Toasts auto-dismiss and notification panels show role-specific events. |
-| TC27 | Security model tabs | Patient, doctor, and institution dashboards show the Security Model content. |
-| TC28 | Empty role tabs | Empty notes, documents, history, requests, and shared-record tabs show clean empty states. |
-| TC29 | Invalid wallet input | Invalid wallet addresses show validation errors and do not send transactions. |
-| TC30 | Unsupported file or wrong key | Unsupported or incorrectly decrypted files show an error and do not expose content. |
-| TC31 | Language toggle | Switching to Kurdish translates all labels in Register, Patient, Doctor, and Institution dashboards, including Notes/Documents forms. English remains the fallback. |
-| TC32 | Blood type select | Registration and patient profile show a blood type dropdown with A+, A-, B+, B-, AB+, AB-, O+, O- options. Free text is not accepted. |
-| TC33 | Patient notes status labels | Notes tab displays status as "Reviewed", "Follow Up", or "Urgent" rather than raw database values. |
-| TC34 | Patient notes and documents headers | Notes tab shows a "Doctor Notes" section header. Documents tab shows a "Care Documents" section header. |
-| TC35 | Audit PDF notification rows | Exported patient audit PDF does not include "Record #" prefix for notification-type audit entries. |
-| TC36 | Full prediction history | Doctor prediction history shows all records. A doctor with more than 50 predictions can see all of them. |
-| TC37 | loadRecords error handling | If backend is unavailable when patient loads dashboard, a toast error appears rather than a silent failure. |
-| TC38 | RTL wallet addresses | In Kurdish mode, wallet addresses in doctor Documents and Prediction History tabs remain left-to-right and do not break layout. |
-| TC39 | Service status bar | Service status bar shows live status for Backend, ML, and Sepolia using `VITE_API_URL`, `VITE_ML_URL`, and `VITE_SEPOLIA_RPC_URL`. Refresh button updates all three. Sepolia shows offline when the configured RPC endpoint is unreachable. |
-
-## Demonstration Flow
-
-1. Register institution admin and create an institution.
-2. Register doctor and save the MetaMask encryption public key.
-3. Register patient and upload `sample_diabetes_vitals.pdf`.
-4. Patient toggles Important and Emergency-visible flags.
-5. Patient grants doctor access from Manage Access.
-6. Doctor views and decrypts the record.
-7. Doctor runs the diabetes prediction and reviews History.
-8. Doctor adds a note and sends a care document.
-9. Patient reviews notes/documents and downloads the branded care-document PDF.
-10. Patient exports the audit PDF.
-11. Patient grants institution access.
-12. Doctor requests membership or creates the automatic request during registration.
-13. Admin approves membership and reviews Shared records.
-14. Institution admin exports the institution audit PDF.
-15. Patient shares keys if a new institution doctor needs access to an old shared record.
-16. Doctor checks emergency request filtering.
-17. Admin removes doctor and doctor receives a notification.
+| # | Step | Expected | Status | Date | Notes |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Register institution admin and create an institution. | Institution dashboard opens, institution is saved locally, and registration transaction confirms on Sepolia. | Pass | 2026-05-30 | Requires MetaMask and Sepolia ETH. |
+| 2 | Register doctor and save MetaMask encryption public key. | Doctor dashboard opens and backend profile stores `encryptionPublicKey`. | Pass | 2026-05-30 | MetaMask may prompt for encryption public key access. |
+| 3 | Register patient. | Patient dashboard opens for the registered wallet. | Pass | 2026-05-30 | Use fake demo identity only. |
+| 4 | Upload a sample diabetes PDF from `sample_records`. | File is encrypted in-browser before upload, pinned to IPFS, recorded on-chain, and listed in patient records. | Pass | 2026-05-30 | Use a text-based sample PDF. |
+| 5 | Toggle Important and Emergency-visible flags. | Flags save as metadata and remain after refresh. | Pass | 2026-05-30 | Emergency flag should feed doctor emergency request list. |
+| 6 | Patient grants doctor access from Manage Access. | On-chain access is granted and a MetaMask-public-key encrypted AES key envelope is stored for the doctor. | Pass | 2026-05-30 | Doctor needs both access and key envelope. |
+| 7 | Doctor views and decrypts the record. | MetaMask decrypts the key envelope client-side and the original file downloads. | Pass | 2026-05-30 | No plaintext should be returned by backend. |
+| 8 | Doctor runs diabetes prediction and reviews History. | Prediction result shows probability, states it is not a clinical diagnosis, and history updates. | Pass | 2026-05-30 | Auto-fill works only for text PDFs. |
+| 9 | Doctor adds a note and sends a care document. | Patient sees the note and document; doctor histories update. | Pass | 2026-05-30 | Requires record access. |
+| 10 | Patient reviews notes/documents and downloads care-document PDF. | PDF opens with HealthTrust header, metadata, content, and non-diagnostic prototype footer. | Pass | 2026-05-30 | Verify readability. |
+| 11 | Patient exports the audit PDF. | Audit PDF includes HealthTrust header and access/workflow timeline. | Pass | 2026-05-30 | Notification rows should not show null record IDs. |
+| 12 | Patient grants institution access. | Institution admin sees shared record and shared-record/key counts update. | Pass | 2026-05-30 | Institution doctors still need key envelopes. |
+| 13 | Doctor requests membership or creates automatic request during registration. | Institution admin sees Pass request and doctor Membership History updates. | Pass | 2026-05-30 | Duplicate requested/approved institutions should be hidden. |
+| 14 | Admin approves membership and reviews Shared records. | Doctor is added on-chain, linked locally, notified, and institution Shared tab remains accurate. | Pass | 2026-05-30 | Requires admin wallet. |
+| 15 | Institution admin exports institution audit PDF. | PDF includes membership activity, shared-record counts, operational summary, and timeline. | Pass | 2026-05-30 | Verify counts match UI. |
+| 16 | Patient shares keys for a newly joined institution doctor. | Newly joined doctor receives a key envelope and can decrypt previously shared institution records. | Pass | 2026-05-30 | UI should tell patient re-sharing is needed. |
+| 17 | Doctor checks emergency request filtering. | Already accessible emergency records are hidden; inaccessible emergency-visible records can be requested. | Pass | 2026-05-30 | Patient can approve or reject. |
+| 18 | Admin removes doctor and doctor receives notification. | Doctor is removed from institution, notification appears, and institution-based access is lost. | Pass | 2026-05-30 | Revocation cannot erase prior downloads. |
 
 ## Screenshot Evidence
 
-| Screenshot | File |
-| --- | --- |
-| Login/register | `docs/screenshots/01-login-register.png` |
-| Patient dashboard | `docs/screenshots/02-patient-dashboard.png` |
-| Upload controls | `docs/screenshots/03-patient-upload.png` |
-| Access grant/revoke modal | `docs/screenshots/04-access-modal.png` |
-| Doctor records, prediction form, and histories | `docs/screenshots/05-doctor-records.png` |
-| Prediction result | `docs/screenshots/06-prediction-result.png` |
-| Institution dashboard | `docs/screenshots/07-institution-dashboard.png` |
-| Notifications | `docs/screenshots/08-notifications.png` |
-| Security model | `docs/screenshots/09-security-model.png` |
+Store final evidence in `docs\screenshots\01` through `10`.

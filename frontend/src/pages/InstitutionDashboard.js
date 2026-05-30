@@ -111,7 +111,7 @@ export default function InstitutionDashboard() {
       setSharedRecords(records);
       const ids = records.map((record) => record.id).join(",");
       if (ids) {
-        const meta = await axios.get(`${API_URL}/api/records/metadata/bulk?ids=${ids}`);
+        const meta = await axios.get(`${API_URL}/api/records/metadata/bulk?ids=${ids}`, { headers });
         setMetadata(Object.fromEntries(meta.data.map((row) => [row.recordId, row])));
       } else {
         setMetadata({});
@@ -202,7 +202,7 @@ export default function InstitutionDashboard() {
       toast.update(toastId, { render: t("Institution registered"), type: "success", isLoading: false, autoClose: 3000 });
       await loadInstitution();
     } catch (error) {
-      toast.update(toastId, { render: localizeText(error.reason || error.response?.data?.message || error.message), type: "error", isLoading: false, autoClose: 5000 });
+      toast.update(toastId, { render: localizeText(error.reason || error.response?.data?.error || error.response?.data?.message || error.message), type: "error", isLoading: false, autoClose: 5000 });
     } finally {
       setPendingAction("");
     }
@@ -285,7 +285,7 @@ export default function InstitutionDashboard() {
       toast.success(localizeText(`Membership ${status}`));
       await loadInstitution();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || localizeText(`Unable to mark membership ${status}`));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || localizeText(`Unable to mark membership ${status}`));
     } finally {
       setPendingAction("");
     }

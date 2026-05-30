@@ -34,7 +34,7 @@ export default function Register() {
       .then((response) => {
         if (active) setInstitutions(response.data);
       })
-      .catch((error) => toast.error(error.response?.data?.message || error.message || "Unable to load institutions"))
+      .catch((error) => toast.error(error.response?.data?.error || error.response?.data?.message || error.message || "Unable to load institutions"))
       .finally(() => {
         if (active) setLoadingInstitutions(false);
       });
@@ -111,16 +111,16 @@ export default function Register() {
           toast.success("Institution membership request sent");
         } catch (error) {
           if (error.response?.status === 409) {
-            toast.info(error.response.data.message);
+            toast.info(error.response.data.error || error.response.data.message);
           } else {
-            toast.error(error.response?.data?.message || error.message || "Profile saved, but membership request failed");
+            toast.error(error.response?.data?.error || error.response?.data?.message || error.message || "Profile saved, but membership request failed");
           }
         }
       }
       await fetchProfile(walletAddress);
       toast.success("Profile saved");
     } catch (error) {
-      toast.error(error.reason || error.response?.data?.message || error.message || "Unable to save profile");
+      toast.error(error.reason || error.response?.data?.error || error.response?.data?.message || error.message || "Unable to save profile");
     } finally {
       setIsSubmitting(false);
     }

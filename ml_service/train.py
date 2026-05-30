@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import joblib
@@ -11,7 +12,10 @@ from sklearn.linear_model import LogisticRegression
 
 BASE_DIR = Path(__file__).resolve().parent
 DATASET_PATH = BASE_DIR / "diabetes_prediction_dataset.csv"
-MODEL_PATH = BASE_DIR / "model.pkl"
+_model_path_env = os.getenv("MODEL_PATH")
+MODEL_PATH = Path(_model_path_env).expanduser() if _model_path_env else BASE_DIR / "model.pkl"
+if not MODEL_PATH.is_absolute():
+    MODEL_PATH = BASE_DIR / MODEL_PATH
 
 CATEGORICAL_FEATURES = ["gender", "smoking_history"]
 NUMERIC_FEATURES = [

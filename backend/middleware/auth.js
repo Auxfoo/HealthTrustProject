@@ -35,44 +35,44 @@ function requireWalletAuth(expectedAction) {
     try {
       const { wallet, message, signature } = parseAuth(req);
       if (!wallet || !message || !signature) {
-        return res.status(401).json({ message: "Signed wallet authentication is required" });
+        return res.status(401).json({ error: "Signed wallet authentication is required" });
       }
 
       const recovered = ethers.verifyMessage(message, signature).toLowerCase();
       const normalizedWallet = wallet.toLowerCase();
       if (recovered !== normalizedWallet) {
-        return res.status(401).json({ message: "Wallet signature does not match the claimed wallet" });
+        return res.status(401).json({ error: "Wallet signature does not match the claimed wallet" });
       }
 
       const fields = parseMessage(message);
       if (fields.wallet?.toLowerCase() !== normalizedWallet) {
-        return res.status(401).json({ message: "Signed message wallet does not match request wallet" });
+        return res.status(401).json({ error: "Signed message wallet does not match request wallet" });
       }
 
       const action = fields.action;
       const isSession = action === "session";
       if (expectedAction && action !== expectedAction && !isSession) {
-        return res.status(401).json({ message: "Signed message action is invalid" });
+        return res.status(401).json({ error: "Signed message action is invalid" });
       }
 
       const timestamp = Number(fields.timestamp);
       const maxAge = isSession ? MAX_SESSION_AGE_MS : MAX_AUTH_AGE_MS;
       const now = Date.now();
       if (!Number.isFinite(timestamp) || timestamp > now + MAX_AUTH_AGE_MS || now - timestamp > maxAge) {
-        return res.status(401).json({ message: "Signed message is expired or invalid" });
+        return res.status(401).json({ error: "Signed message is expired or invalid" });
       }
 
       if (isSession) {
         const expiresAt = Number(fields["expires at"]);
         if (!Number.isFinite(expiresAt) || now > expiresAt || expiresAt - timestamp > MAX_SESSION_AGE_MS) {
-          return res.status(401).json({ message: "Signed session is expired or invalid" });
+          return res.status(401).json({ error: "Signed session is expired or invalid" });
         }
       }
 
       req.authWallet = normalizedWallet;
       next();
     } catch (error) {
-      res.status(401).json({ message: "Unable to verify wallet signature", error: error.message });
+      res.status(401).json({ error: "Unable to verify wallet signature", detail: error.message });
     }
   };
 }

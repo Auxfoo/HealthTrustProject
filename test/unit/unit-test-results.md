@@ -1,6 +1,6 @@
 # Unit Testing Results
 
-Date: 2026-05-28
+Date: 2026-05-30
 
 ## How To Run
 
@@ -37,23 +37,7 @@ ML direct prediction smoke test:
 
 ```powershell
 cd ml_service
-@'
-import main
-import joblib
-
-main.model = joblib.load(main.MODEL_PATH)
-payload = main.DiabetesInput(
-    gender="Female",
-    age=54,
-    hypertension=0,
-    heart_disease=0,
-    smoking_history="never",
-    bmi=27.32,
-    HbA1c_level=6.6,
-    blood_glucose_level=140,
-)
-print(main.predict(payload))
-'@ | .\.venv\Scripts\python.exe -
+.\.venv\Scripts\python.exe smoke_test.py
 ```
 
 ## Latest Results
@@ -64,9 +48,9 @@ print(main.predict(payload))
 | Smart contract access control | `cd blockchain && npm test` | PASS |
 | Frontend build validation | `cd frontend && npm run build` | PASS |
 | ML model training | `cd ml_service && python train.py` | PASS |
-| ML direct prediction | Import `main.py` and call `main.predict(...)` | PASS |
+| ML direct prediction | `cd ml_service && .\.venv\Scripts\python.exe smoke_test.py` | PASS |
 
-Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, and ML prediction smoke test were re-verified on 2026-05-29 after the prediction update.
+Run added on 2026-05-30 after access/auth, ML validation, and smart-contract membership updates.
 
 ## Backend Unit Test Summary
 
@@ -84,10 +68,12 @@ Total backend tests: 4 passed, 0 failed.
 | Test | Result |
 | --- | --- |
 | Grants and revokes direct doctor access per record | PASS |
+| Supports audited grantAccess and revokeAccess aliases | PASS |
 | Allows institution doctors to use institution-level access | PASS |
 | Lets a clinician create a patient-owned record | PASS |
+| Handles membership request, approval, and removal with admin-only controls | PASS |
 
-Total blockchain tests: 3 passed, 0 failed.
+Total blockchain tests: 5 passed, 0 failed.
 
 ## ML Test Summary
 
@@ -128,9 +114,9 @@ Prediction output:
 
 The frontend build passed. Vite reported a chunk-size warning because the generated JavaScript bundle is larger than 500 kB. This is a performance warning, not a functional failure.
 
-The current frontend build covers patient upload status, Important/Emergency flags, notifications, doctor history rows, the access modal key icon, institution shared-key counts, duplicate-safe institution request UI, emergency dropdown filtering, and branded PDF report generation imports. These are validated by build/import success only; visual confirmation still belongs in system/usability testing.
+The current frontend build covers patient upload status, Important/Emergency flags, notifications, doctor history rows, the access modal key icon, institution shared-key counts, duplicate-safe institution request UI, emergency dropdown filtering, and branded PDF report generation imports. These are validated by build/import success only; visual confirmation still belongs in system testing.
 
-Additional components validated by the 2026-05-28 build:
+Additional components validated by the 2026-05-30 build:
 
 - Full Kurdish/English bilingual support across Register, Doctor Notes form, Doctor Documents form, and all dashboard tabs.
 - Blood type select in registration and patient profile (A+, A-, B+, B-, AB+, AB-, O+, O-).

@@ -43,12 +43,12 @@ exports.createDocument = async (req, res) => {
   try {
     const { patientWallet, recordId, cid, encrypted = false, documentType, title, content } = req.body;
     if (!patientWallet || !recordId || !documentType || !title) {
-      return res.status(400).json({ message: "patientWallet, recordId, documentType, and title are required" });
+      return res.status(400).json({ error: "patientWallet, recordId, documentType, and title are required" });
     }
 
     const doctorWallet = req.authWallet.toLowerCase();
     const access = await validateDoctorRecordAccess(recordId, patientWallet, doctorWallet);
-    if (!access.ok) return res.status(access.status).json({ message: access.message });
+    if (!access.ok) return res.status(access.status).json({ error: access.message });
 
     const document = await prisma.doctorDocument.create({
       data: {
@@ -65,7 +65,7 @@ exports.createDocument = async (req, res) => {
     await createNotification(patientWallet.toLowerCase(), "doctor_document", "Care document added", `${title} is available.`);
     res.status(201).json(document);
   } catch (error) {
-    res.status(500).json({ message: "Unable to create care document", error: error.message });
+    res.status(500).json({ error: "Unable to create care document", detail: error.message });
   }
 };
 
@@ -78,6 +78,6 @@ exports.getMine = async (req, res) => {
     });
     res.json(documents);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch care documents", error: error.message });
+    res.status(500).json({ error: "Unable to fetch care documents", detail: error.message });
   }
 };

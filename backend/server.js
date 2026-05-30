@@ -38,6 +38,15 @@ app.use("/api/membership-requests", membershipRequestRoutes);
 app.use("/api/doctor-documents", doctorDocumentRoutes);
 app.use("/api/notifications", notificationRoutes);
 
+app.use((req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+app.use((error, req, res, next) => {
+  console.error(error);
+  res.status(500).json({ error: "Internal server error" });
+});
+
 async function startServer() {
   try {
     await prisma.$connect();

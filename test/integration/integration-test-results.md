@@ -1,6 +1,6 @@
 # Integration Testing Results
 
-Date: 2026-05-28
+Date: 2026-05-30
 
 Integration testing checks whether separate parts of HealthTrust work together correctly.
 
@@ -39,23 +39,7 @@ ML prediction logic:
 
 ```powershell
 cd ml_service
-@'
-import main
-import joblib
-
-main.model = joblib.load(main.MODEL_PATH)
-payload = main.DiabetesInput(
-    gender="Female",
-    age=54,
-    hypertension=0,
-    heart_disease=0,
-    smoking_history="never",
-    bmi=27.32,
-    HbA1c_level=6.6,
-    blood_glucose_level=140,
-)
-print(main.predict(payload))
-'@ | .\.venv\Scripts\python.exe -
+.\.venv\Scripts\python.exe smoke_test.py
 ```
 
 ## Latest Automated Results
@@ -63,12 +47,18 @@ print(main.predict(payload))
 | Integrated components | Check performed | Result |
 | --- | --- | --- |
 | Backend authentication middleware and protected routes | `npm test` in `backend` | PASS |
-| Smart contract and Hardhat local chain | `npm test` in `blockchain` | PASS |
+| Smart contract and Hardhat local chain | `npm test` in `blockchain` | PASS, 5 tests |
 | React frontend and shared contract config imports | `npm run build` in `frontend` | PASS |
 | ML training pipeline and saved model artifact | `train.py` created `model.pkl` with a scaled LogisticRegression pipeline | PASS |
-| FastAPI prediction logic and trained model | Direct call to `main.predict(...)` returned prediction and probability from the trained model | PASS |
+| FastAPI prediction logic and trained model | Direct call to `main.predict(...)` returned `{'prediction': 1, 'probability': 0.5260096618629037}` with venv Python | PASS |
 
-Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, and ML prediction smoke test were re-verified on 2026-05-29 after the prediction update.
+No standalone automated integration test suite exists yet. Top integrations to automate next:
+
+| Priority | Integration | Target behavior |
+| --- | --- | --- |
+| 1 | Backend <-> Pinata | Encrypted upload rejects invalid files and pins valid encrypted blobs with real credentials. |
+| 2 | Backend <-> ML service | `/api/predict` forwards validated features and stores prediction history. |
+| 3 | Frontend <-> backend auth | Signed wallet sessions authorize protected record metadata/key routes. |
 
 ## Covered Behavior
 
@@ -148,4 +138,3 @@ These workflows require real browser/MetaMask interaction:
 - Multi-wallet role testing
 - Real decrypt/download using MetaMask
 - Visual checks for UI details such as checkboxes, badges, notifications, and history rows
-- Usability testing with participants

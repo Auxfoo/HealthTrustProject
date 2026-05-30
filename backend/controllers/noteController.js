@@ -43,12 +43,12 @@ exports.upsertNote = async (req, res) => {
   try {
     const { recordId, patientWallet, status = "reviewed", note } = req.body;
     if (!recordId || !patientWallet) {
-      return res.status(400).json({ message: "recordId and patientWallet are required" });
+      return res.status(400).json({ error: "recordId and patientWallet are required" });
     }
 
     const doctorWallet = req.authWallet.toLowerCase();
     const access = await validateDoctorRecordAccess(recordId, patientWallet, doctorWallet);
-    if (!access.ok) return res.status(access.status).json({ message: access.message });
+    if (!access.ok) return res.status(access.status).json({ error: access.message });
 
     const row = await prisma.doctorNote.upsert({
       where: { recordId_doctorWallet: { recordId: Number(recordId), doctorWallet } },
@@ -65,7 +65,7 @@ exports.upsertNote = async (req, res) => {
     await createNotification(patientWallet.toLowerCase(), "doctor_note", "Doctor note added", `Record #${recordId} was reviewed.`);
     res.json(row);
   } catch (error) {
-    res.status(500).json({ message: "Unable to save doctor note", error: error.message });
+    res.status(500).json({ error: "Unable to save doctor note", detail: error.message });
   }
 };
 
@@ -78,6 +78,6 @@ exports.getMine = async (req, res) => {
     });
     res.json(notes);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch doctor notes", error: error.message });
+    res.status(500).json({ error: "Unable to fetch doctor notes", detail: error.message });
   }
 };

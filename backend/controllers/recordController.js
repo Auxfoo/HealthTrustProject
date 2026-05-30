@@ -27,7 +27,14 @@ function serializeRecord(record) {
 exports.uploadRecord = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ message: "Encrypted file blob is required" });
+      return res.status(400).json({ error: "Encrypted file blob is required" });
+    }
+    if (req.file.size > 15 * 1024 * 1024) {
+      return res.status(400).json({ error: "Encrypted upload must be 15 MB or smaller" });
+    }
+    const looksEncrypted = /\.encrypted\.txt$/i.test(req.file.originalname || "");
+    if (!["text/plain", "application/octet-stream"].includes(req.file.mimetype) && !looksEncrypted) {
+      return res.status(400).json({ error: "Only encrypted text record uploads are accepted" });
     }
 
     const formData = new FormData();
@@ -48,8 +55,8 @@ exports.uploadRecord = async (req, res) => {
     res.json({ cid: response.data.IpfsHash });
   } catch (error) {
     res.status(500).json({
-      message: "Unable to upload encrypted record to IPFS",
-      error: error.response?.data || error.message,
+      error: "Unable to upload encrypted record to IPFS",
+      detail: error.response?.data || error.message,
     });
   }
 };
@@ -59,6 +66,9 @@ exports.getRecordsByWallet = async (req, res) => {
     const contract = getReadContract();
     const records = await contract.getAllRecords();
     const wallet = req.params.wallet.toLowerCase();
+    if (wallet !== req.authWallet?.toLowerCase()) {
+      return res.status(403).json({ error: "Wallet can only fetch its own record list" });
+    }
     const filtered = records
       .map(serializeRecord)
       .filter((record) => record.uploadedBy.toLowerCase() === wallet);
@@ -70,7 +80,7 @@ exports.getRecordsByWallet = async (req, res) => {
 
     res.json(filtered.map((record) => ({ ...record, metadata: metadataById[record.id] || null })));
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch records from blockchain", error: error.message });
+    res.status(500).json({ error: "Unable to fetch records from blockchain", detail: error.message });
   }
 };
 
@@ -79,7 +89,7 @@ exports.upsertMetadata = async (req, res) => {
     const { recordId, ownerWallet, filename, mimeType, title, category, provider, visitDate, notes, archived, important, emergency } =
       req.body;
     if (!recordId || !ownerWallet) {
-      return res.status(400).json({ message: "recordId and ownerWallet are required" });
+      return res.status(400).json({ error: "recordId and ownerWallet are required" });
     }
 
     const normalizedOwner = ownerWallet.toLowerCase();
@@ -90,7 +100,7 @@ exports.upsertMetadata = async (req, res) => {
     const isOwner = normalizedOwner === authWallet || onChainOwner === authWallet;
     const canDeliverDoctorRecord = onChainOwner === normalizedOwner && authWallet && authWallet !== normalizedOwner;
     if (!isOwner && !canDeliverDoctorRecord) {
-      return res.status(403).json({ message: "Only the record owner or creating clinician can save metadata" });
+      return res.status(403).json({ error: "Only the record owner or creating clinician can save metadata" });
     }
 
     const metadata = await prisma.recordMetadata.upsert({
@@ -126,7 +136,7 @@ exports.upsertMetadata = async (req, res) => {
 
     res.json(metadata);
   } catch (error) {
-    res.status(500).json({ message: "Unable to save record metadata", error: error.message });
+    res.status(500).json({ error: "Unable to save record metadata", detail: error.message });
   }
 };
 
@@ -144,6 +154,6 @@ exports.getMetadataByIds = async (req, res) => {
     });
     res.json(metadata);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch record metadata", error: error.message });
+    res.status(500).json({ error: "Unable to fetch record metadata", detail: error.message });
   }
 };

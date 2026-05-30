@@ -287,21 +287,21 @@ sample_records\
 Current files:
 
 ```text
-diabetes_gradient_01_very_low.pdf
-diabetes_gradient_02_low_normal.pdf
-diabetes_gradient_03_elevated_glucose.pdf
-diabetes_gradient_04_prediabetes_mild.pdf
-diabetes_gradient_05_prediabetes_plus_bmi.pdf
-diabetes_gradient_06_glucose_126_plus_age.pdf
-diabetes_gradient_07_prediabetes_risk_factors.pdf
-diabetes_gradient_08_near_threshold.pdf
-diabetes_gradient_09_hba1c_threshold.pdf
-diabetes_gradient_10_glucose_threshold.pdf
-diabetes_gradient_11_both_thresholds.pdf
-diabetes_gradient_12_extreme_high.pdf
-diabetes_gradient_13_elderly_normal.pdf
-diabetes_gradient_14_low_glucose.pdf
-diabetes_gradient_15_out_of_range_glucose.pdf
+diabetes_sample_01_very_low.pdf
+diabetes_sample_02_low_normal.pdf
+diabetes_sample_03_elevated_glucose.pdf
+diabetes_sample_04_prediabetes_mild.pdf
+diabetes_sample_05_prediabetes_plus_bmi.pdf
+diabetes_sample_06_glucose_126_plus_age.pdf
+diabetes_sample_07_prediabetes_risk_factors.pdf
+diabetes_sample_08_near_threshold.pdf
+diabetes_sample_09_hba1c_threshold.pdf
+diabetes_sample_10_glucose_threshold.pdf
+diabetes_sample_11_both_thresholds.pdf
+diabetes_sample_12_extreme_high.pdf
+diabetes_sample_13_elderly_normal.pdf
+diabetes_sample_14_low_glucose.pdf
+diabetes_sample_15_out_of_range_glucose.pdf
 ```
 
 Use fake records and Sepolia test wallets only. Do not upload real patient files.
@@ -341,36 +341,22 @@ Run ML prediction smoke test:
 
 ```powershell
 cd ml_service
-@'
-import main
-import joblib
-
-main.model = joblib.load(main.MODEL_PATH)
-payload = main.DiabetesInput(
-    gender="Female",
-    age=54,
-    hypertension=0,
-    heart_disease=0,
-    smoking_history="never",
-    bmi=27.32,
-    HbA1c_level=6.6,
-    blood_glucose_level=140,
-)
-print(main.predict(payload))
-'@ | .\.venv\Scripts\python.exe -
+.\.venv\Scripts\python.exe smoke_test.py
 ```
 
 Expected output shape:
 
 ```text
-{'prediction': 1, 'probability': ...}
+{'prediction': 1, 'probability': 0.5260096618629037}
 ```
 
-Testing evidence lives in:
+Current automated results and testing evidence live in:
 
 ```text
 test\
 ```
+
+Start with `test\unit\unit-test-results.md` for the latest terminal run.
 
 ## 11. Manual Browser Tests
 
@@ -441,6 +427,8 @@ For a completely clean on-chain demo, deploy a new contract and update `CONTRACT
 | Contract calls fail | Confirm `CONTRACT_ADDRESS` and `shared\contractConfig.js` point to the deployed contract. |
 | Doctor can see permission but cannot decrypt | Confirm an encrypted key envelope exists for that doctor wallet. Use patient Share keys if needed. |
 | Institution doctor cannot open older shared record | Patient must share/resend the key envelope after the doctor joins. |
+| ML smoke test fails with `ModuleNotFoundError` | Run `.\.venv\Scripts\python.exe smoke_test.py`; do not use global Python for the ML service. |
+| Record metadata requests return 401 | Protected record metadata routes now require signed wallet session headers from the frontend. |
 | Local reset did not clear records in UI | Sepolia state remains. Redeploy contract for clean on-chain state. |
 
 ## 14. Useful Files

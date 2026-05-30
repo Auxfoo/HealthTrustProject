@@ -4,7 +4,10 @@ const { createNotification } = require("../lib/notifications");
 
 exports.predictDiabetes = async (req, res) => {
   try {
-    const mlServiceUrl = process.env.ML_SERVICE_URL || "http://localhost:8000";
+    const mlServiceUrl = process.env.ML_SERVICE_URL;
+    if (!mlServiceUrl) {
+      return res.status(500).json({ error: "ML_SERVICE_URL is not configured" });
+    }
     const { patientWallet, ...features } = req.body;
     const response = await axios.post(`${mlServiceUrl}/predict`, features);
     const result = response.data;
@@ -30,8 +33,8 @@ exports.predictDiabetes = async (req, res) => {
     const status = error.response?.status === 400 ? 400 : 500;
     const detail = error.response?.data?.detail;
     res.status(status).json({
-      message: detail?.message || "Unable to get diabetes prediction",
-      error: error.response?.data || error.message,
+      error: detail?.message || "Unable to get diabetes prediction",
+      detail: error.response?.data || error.message,
     });
   }
 };
@@ -44,6 +47,6 @@ exports.getPredictionHistory = async (req, res) => {
     });
     res.json(history);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch prediction history", error: error.message });
+    res.status(500).json({ error: "Unable to fetch prediction history", detail: error.message });
   }
 };

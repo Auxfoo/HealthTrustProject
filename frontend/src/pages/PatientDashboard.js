@@ -96,7 +96,8 @@ export default function PatientDashboard() {
 
   async function loadRecords() {
     try {
-      const response = await axios.get(`${API_URL}/api/records/${walletAddress}`);
+      const headers = await createAuthHeaders(walletAddress);
+      const response = await axios.get(`${API_URL}/api/records/${walletAddress}`, { headers });
       setRecords(response.data);
       const local = getLocalMetadata(walletAddress);
       const merged = {};
@@ -105,7 +106,6 @@ export default function PatientDashboard() {
       });
       setMetadata(merged);
 
-      const headers = await createAuthHeaders(walletAddress);
       const [keys, noteResponse, docs, accessRequests] = await Promise.all([
         axios.get(`${API_URL}/api/record-keys/owned`, { headers }),
         axios.get(`${API_URL}/api/notes`, { headers }),
@@ -117,7 +117,7 @@ export default function PatientDashboard() {
       setDocuments(docs.data);
       setRequests(accessRequests.data);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("Unable to load records"));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to load records"));
     }
   }
 
@@ -316,7 +316,7 @@ export default function PatientDashboard() {
     } catch (error) {
       saveLocalMetadata(walletAddress, recordId, previous);
       setMetadata((current) => ({ ...current, [recordId]: previous }));
-      toast.error(error.response?.data?.message || error.message || "Unable to save record details");
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || "Unable to save record details");
     }
   }
 
@@ -331,7 +331,7 @@ export default function PatientDashboard() {
       await fetchProfile(walletAddress);
       toast.success(t("Medical profile saved"));
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message || t("Unable to save profile"));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to save profile"));
     }
   }
 
@@ -430,7 +430,7 @@ export default function PatientDashboard() {
       await loadRecords();
       if (activeTab === "audit") await loadAuditTrail();
     } catch (error) {
-      toast.error(error.response?.data?.message || error.reason || error.message || t("Unable to update request"));
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.reason || error.message || t("Unable to update request"));
     }
   }
 

@@ -26,6 +26,7 @@ contract HealthTrust is Ownable {
     mapping(uint256 => mapping(address => bool)) private doctorAccess;
     mapping(uint256 => mapping(uint256 => bool)) private institutionAccess;
     mapping(uint256 => mapping(address => bool)) private institutionDoctors;
+    mapping(uint256 => mapping(address => bool)) private pendingMembershipRequests;
     mapping(uint256 => Institution) private institutions;
     mapping(uint256 => address[]) private institutionDoctorList;
 
@@ -41,6 +42,8 @@ contract HealthTrust is Ownable {
     event AccessGrantedToInstitution(address indexed patient, uint256 institutionId, uint256 recordId);
     event AccessRevokedFromInstitution(address indexed patient, uint256 institutionId, uint256 recordId);
     event InstitutionRegistered(uint256 institutionId, string name, address adminWallet);
+    event MembershipRequested(uint256 institutionId, address doctorAddress);
+    event MembershipApproved(uint256 institutionId, address doctorAddress);
     event DoctorAddedToInstitution(uint256 institutionId, address doctorAddress);
     event DoctorRemovedFromInstitution(uint256 institutionId, address doctorAddress);
 
@@ -86,15 +89,31 @@ contract HealthTrust is Ownable {
     }
 
     function grantAccessToDoctor(uint256 recordId, address doctorAddress) external onlyRecordOwner(recordId) {
+        _grantDoctorAccess(recordId, doctorAddress);
+    }
+
+    function grantAccess(uint256 recordId, address doctorAddress) external onlyRecordOwner(recordId) {
+        _grantDoctorAccess(recordId, doctorAddress);
+    }
+
+    function _grantDoctorAccess(uint256 recordId, address doctorAddress) internal {
         require(doctorAddress != address(0), "Doctor wallet is required");
         doctorAccess[recordId][doctorAddress] = true;
-        emit AccessGrantedToDoctor(msg.sender, doctorAddress, recordId);
+        emit AccessGrantedToDoctor(recordOwners[recordId], doctorAddress, recordId);
     }
 
     function revokeAccessFromDoctor(uint256 recordId, address doctorAddress) external onlyRecordOwner(recordId) {
+        _revokeDoctorAccess(recordId, doctorAddress);
+    }
+
+    function revokeAccess(uint256 recordId, address doctorAddress) external onlyRecordOwner(recordId) {
+        _revokeDoctorAccess(recordId, doctorAddress);
+    }
+
+    function _revokeDoctorAccess(uint256 recordId, address doctorAddress) internal {
         require(doctorAddress != address(0), "Doctor wallet is required");
         doctorAccess[recordId][doctorAddress] = false;
-        emit AccessRevokedFromDoctor(msg.sender, doctorAddress, recordId);
+        emit AccessRevokedFromDoctor(recordOwners[recordId], doctorAddress, recordId);
     }
 
     function grantAccessToInstitution(uint256 recordId, uint256 institutionId) external onlyRecordOwner(recordId) {
@@ -130,6 +149,37 @@ contract HealthTrust is Ownable {
         uint256 institutionId,
         address doctorAddress
     ) external onlyInstitutionAdmin(institutionId) {
+        _addMember(institutionId, doctorAddress);
+    }
+
+    function requestMembership(uint256 institutionId) external {
+        require(institutions[institutionId].isVerified, "Institution does not exist");
+        require(!institutionDoctors[institutionId][msg.sender], "Doctor is already a member");
+        pendingMembershipRequests[institutionId][msg.sender] = true;
+        emit MembershipRequested(institutionId, msg.sender);
+    }
+
+    function approveMembership(
+        uint256 institutionId,
+        address doctorAddress
+    ) external onlyInstitutionAdmin(institutionId) {
+        require(pendingMembershipRequests[institutionId][doctorAddress], "Membership request not found");
+        pendingMembershipRequests[institutionId][doctorAddress] = false;
+        _addMember(institutionId, doctorAddress);
+        emit MembershipApproved(institutionId, doctorAddress);
+    }
+
+    function removeMember(
+        uint256 institutionId,
+        address doctorAddress
+    ) external onlyInstitutionAdmin(institutionId) {
+        _removeMember(institutionId, doctorAddress);
+    }
+
+    function _addMember(
+        uint256 institutionId,
+        address doctorAddress
+    ) internal {
         require(doctorAddress != address(0), "Doctor wallet is required");
 
         if (!institutionDoctors[institutionId][doctorAddress]) {
@@ -143,6 +193,13 @@ contract HealthTrust is Ownable {
         uint256 institutionId,
         address doctorAddress
     ) external onlyInstitutionAdmin(institutionId) {
+        _removeMember(institutionId, doctorAddress);
+    }
+
+    function _removeMember(
+        uint256 institutionId,
+        address doctorAddress
+    ) internal {
         require(doctorAddress != address(0), "Doctor wallet is required");
         require(institutionDoctors[institutionId][doctorAddress], "Doctor is not in institution");
 

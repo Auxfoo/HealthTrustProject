@@ -11,6 +11,9 @@ function getProvider() {
 }
 
 function getSignerContract() {
+  if (!process.env.PRIVATE_KEY) {
+    throw new Error("PRIVATE_KEY is required for backend blockchain proxy writes");
+  }
   // Assumption: backend proxy route is kept for API completeness; MetaMask is preferred for admin writes.
   const signer = new ethers.Wallet(process.env.PRIVATE_KEY, getProvider());
   return new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
@@ -48,10 +51,10 @@ exports.registerInstitution = async (req, res) => {
     const { name, institutionType, adminWallet, institutionId } = req.body;
 
     if (!name || !institutionType || !adminWallet) {
-      return res.status(400).json({ message: "name, institutionType, and adminWallet are required" });
+      return res.status(400).json({ error: "name, institutionType, and adminWallet are required" });
     }
     if (req.authWallet && req.authWallet !== adminWallet.toLowerCase()) {
-      return res.status(403).json({ message: "Signed wallet must match institution admin wallet" });
+      return res.status(403).json({ error: "Signed wallet must match institution admin wallet" });
     }
 
     let onChainId = institutionId ? Number(institutionId) : null;
@@ -65,7 +68,7 @@ exports.registerInstitution = async (req, res) => {
     }
 
     if (!onChainId) {
-      return res.status(500).json({ message: "Unable to determine on-chain institution ID" });
+      return res.status(500).json({ error: "Unable to determine on-chain institution ID" });
     }
 
     const normalizedAdminWallet = adminWallet.toLowerCase();
@@ -103,9 +106,15 @@ exports.registerInstitution = async (req, res) => {
           },
         });
 
+    await createNotification(
+      normalizedAdminWallet,
+      "institution_registered",
+      "Institution registered",
+      `${name} is registered in HealthTrust.`
+    );
     res.status(201).json({ institution, transactionHash });
   } catch (error) {
-    res.status(500).json({ message: "Unable to register institution", error: error.message });
+    res.status(500).json({ error: "Unable to register institution", detail: error.message });
   }
 };
 
@@ -116,7 +125,7 @@ exports.addDoctor = async (req, res) => {
     const receipt = await tx.wait();
     res.json({ transactionHash: receipt.hash, blockNumber: receipt.blockNumber });
   } catch (error) {
-    res.status(500).json({ message: "Unable to add doctor to institution", error: error.message });
+    res.status(500).json({ error: "Unable to add doctor to institution", detail: error.message });
   }
 };
 
@@ -127,7 +136,7 @@ exports.removeDoctor = async (req, res) => {
     const receipt = await tx.wait();
     res.json({ transactionHash: receipt.hash, blockNumber: receipt.blockNumber });
   } catch (error) {
-    res.status(500).json({ message: "Unable to remove doctor from institution", error: error.message });
+    res.status(500).json({ error: "Unable to remove doctor from institution", detail: error.message });
   }
 };
 
@@ -145,7 +154,7 @@ exports.getInstitutions = async (req, res) => {
     });
     res.json(uniqueInstitutions);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch institutions", error: error.message });
+    res.status(500).json({ error: "Unable to fetch institutions", detail: error.message });
   }
 };
 
@@ -154,7 +163,7 @@ exports.getInstitutionDoctors = async (req, res) => {
     const doctors = await getReadContract().getInstitutionDoctors(req.params.id);
     res.json(doctors);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch institution doctors", error: error.message });
+    res.status(500).json({ error: "Unable to fetch institution doctors", detail: error.message });
   }
 };
 
@@ -170,7 +179,7 @@ async function requireInstitutionAdmin(institutionId, wallet) {
 exports.linkDoctorProfile = async (req, res) => {
   try {
     const access = await requireInstitutionAdmin(req.params.id, req.authWallet);
-    if (!access.ok) return res.status(access.status).json({ message: access.message });
+    if (!access.ok) return res.status(access.status).json({ error: access.message });
     const doctorWallet = req.params.doctorWallet.toLowerCase();
     await prisma.user.updateMany({
       where: { wallet: doctorWallet, role: "doctor" },
@@ -182,16 +191,22 @@ exports.linkDoctorProfile = async (req, res) => {
       "Institution membership active",
       `You were added to ${access.institution.name}.`
     );
+    await createNotification(
+      access.institution.adminWallet,
+      "doctor_added",
+      "Doctor added to institution",
+      `${doctorWallet} was added to ${access.institution.name}.`
+    );
     res.json({ ok: true });
   } catch (error) {
-    res.status(500).json({ message: "Unable to link doctor profile", error: error.message });
+    res.status(500).json({ error: "Unable to link doctor profile", detail: error.message });
   }
 };
 
 exports.unlinkDoctorProfile = async (req, res) => {
   try {
     const access = await requireInstitutionAdmin(req.params.id, req.authWallet);
-    if (!access.ok) return res.status(access.status).json({ message: access.message });
+    if (!access.ok) return res.status(access.status).json({ error: access.message });
     const doctorWallet = req.params.doctorWallet.toLowerCase();
     await prisma.user.updateMany({
       where: { wallet: doctorWallet, role: "doctor", institutionId: Number(req.params.id) },
@@ -203,8 +218,14 @@ exports.unlinkDoctorProfile = async (req, res) => {
       "Removed from institution",
       `You were removed from ${access.institution.name}.`
     );
+    await createNotification(
+      access.institution.adminWallet,
+      "doctor_removed",
+      "Doctor removed from institution",
+      `${doctorWallet} was removed from ${access.institution.name}.`
+    );
     res.json({ ok: true });
   } catch (error) {
-    res.status(500).json({ message: "Unable to unlink doctor profile", error: error.message });
+    res.status(500).json({ error: "Unable to unlink doctor profile", detail: error.message });
   }
 };

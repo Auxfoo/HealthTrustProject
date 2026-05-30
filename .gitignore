@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+frontend/dist/
 blockchain/artifacts/
 blockchain/cache/
 blockchain/typechain-types/
@@ -14,7 +15,6 @@ ml_service/.env
 ml_service/.venv/
 ml_service/__pycache__/
 ml_service/model.pkl
-
 
 *.log
 .DS_Store

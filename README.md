@@ -88,7 +88,7 @@ frontend/       React app for patient, doctor, and institution workflows
 ml_service/     FastAPI diabetes prediction service and model training script
 sample_records/ Fake PDF records for demo/testing
 shared/         Shared deployed contract config used by the frontend
-test/           Unit, integration, system, and usability test documentation
+test/           Unit, integration, and system test documentation
 docs/           Screenshot evidence and supporting documentation
 ```
 
@@ -109,9 +109,15 @@ The service returns only the trained model prediction and probability. It is not
 
 ## Demo Assets
 
-Fake diabetes-gradient PDF records are available in `sample_records/`. They are intended for upload, sharing, decryption, and prediction auto-fill demos. Do not use real patient data in this prototype.
+Fake diabetes PDF records are available in `sample_records/`. The current filename list lives in [PROJECT_GUIDE.md](PROJECT_GUIDE.md#9-sample-records). Do not use real patient data in this prototype.
 
 Screenshot evidence for reports is stored in `docs/screenshots/`.
+
+## Status And Evidence
+
+For setup, environment variables, database commands, contract deployment, ML training, service startup, and demo reset, use [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
+
+For current automated test results and manual test evidence, use the files under [test/](test/), especially [test/unit/unit-test-results.md](test/unit/unit-test-results.md).
 
 ## Known Limitations
 
@@ -124,10 +130,6 @@ Screenshot evidence for reports is stored in `docs/screenshots/`.
 - No formal smart-contract or security audit has been completed.
 - The diabetes prediction feature is non-diagnostic.
 - Local database resets do not reset Sepolia smart-contract state.
-
-## Setup
-
-For installation, environment variables, database setup, contract deployment, ML training, running services, testing, and demo reset commands, see [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
 
 ## References
 

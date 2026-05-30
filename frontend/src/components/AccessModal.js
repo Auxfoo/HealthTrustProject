@@ -43,7 +43,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
         setInstitutions(response.data);
         if (response.data[0]) setInstitutionId(String(response.data[0].institutionId));
       })
-      .catch((error) => toast.error(error.response?.data?.message || error.message || t("Unable to load institutions")))
+      .catch((error) => toast.error(error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to load institutions")))
       .finally(() => {
         if (active) setLoadingInstitutions(false);
       });
@@ -78,7 +78,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
       try {
         await onRefresh();
       } catch (error) {
-        toast.warn(error.response?.data?.message || error.message || t("Dashboard refresh failed. Modal data was refreshed."));
+        toast.warn(error.response?.data?.error || error.response?.data?.message || error.message || t("Dashboard refresh failed. Modal data was refreshed."));
       }
     }
   }
@@ -111,7 +111,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
         txHash: tx.hash,
       });
     } catch (error) {
-      const message = error.response?.data?.message || error.response?.data?.error || error.reason || error.message || "Access update failed";
+      const message = error.response?.data?.error || error.response?.data?.message || error.reason || error.message || "Access update failed";
       setAccessStatus({
         state: "error",
         title: t("Access update failed"),
@@ -141,7 +141,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
       await refreshEverywhere();
       setAccessStatus({ state: "success", title: t("Key resent"), detail: t("The access list below is up to date.") });
     } catch (error) {
-      const message = error.response?.data?.message || error.message || t("Unable to resend key");
+      const message = error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to resend key");
       setAccessStatus({ state: "error", title: t("Unable to resend key"), detail: localizeText(message) });
       toast.update(toastId, {
         render: localizeText(message),
@@ -165,7 +165,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
     try {
       envelope = await buildDoctorKeyEnvelope(API_URL, walletAddress, doctorAddress, record, aesKey);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message);
       return;
     }
     await runTransaction(
@@ -202,7 +202,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
       }
       envelopes = await buildInstitutionKeyEnvelopes(API_URL, institution, doctors, record, aesKey);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message);
       return;
     }
     await runTransaction(
@@ -229,7 +229,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
       await refreshEverywhere();
       setAccessStatus({ state: "success", title: t("Institution keys shared"), detail: t("The access list below is up to date.") });
     } catch (error) {
-      const message = error.response?.data?.message || error.message || t("Unable to share institution keys");
+      const message = error.response?.data?.error || error.response?.data?.message || error.message || t("Unable to share institution keys");
       setAccessStatus({ state: "error", title: t("Unable to share institution keys"), detail: localizeText(message) });
       toast.update(toastId, {
         render: localizeText(message),
@@ -374,6 +374,9 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
                 {t("Revoke")}
               </button>
             </div>
+            <p className="notice">
+              When a new doctor joins an institution that already has record access, share keys again so that doctor receives a MetaMask-encrypted key envelope.
+            </p>
             <h3>{t("Institution Key Envelopes")}</h3>
             <div className="request-list">
               {institutionKeys.map((key) => (

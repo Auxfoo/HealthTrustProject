@@ -92,7 +92,7 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
       );
       onResult(response.data);
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.error || error.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
@@ -100,6 +100,9 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
 
   return (
     <form className="prediction-form" onSubmit={submit}>
+      <p className="notice">
+        PDF auto-fill works only after opening a text-based PDF record; scanned image PDFs need manual entry.
+      </p>
       <label>
         Patient wallet
         <input value={selectedPatientWallet} onChange={(event) => updatePatientWallet(event.target.value)} placeholder="Optional" />

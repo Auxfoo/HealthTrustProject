@@ -4,10 +4,10 @@ const { createNotification } = require("../lib/notifications");
 exports.createRequest = async (req, res) => {
   try {
     const { institutionId, message } = req.body;
-    if (!institutionId) return res.status(400).json({ message: "institutionId is required" });
+    if (!institutionId) return res.status(400).json({ error: "institutionId is required" });
 
     const institution = await prisma.institution.findUnique({ where: { institutionId: Number(institutionId) } });
-    if (!institution) return res.status(404).json({ message: "Institution not found" });
+    if (!institution) return res.status(404).json({ error: "Institution not found" });
 
     const doctorWallet = req.authWallet.toLowerCase();
     const existing = await prisma.institutionJoinRequest.findFirst({
@@ -19,7 +19,7 @@ exports.createRequest = async (req, res) => {
     });
     if (existing) {
       return res.status(409).json({
-        message:
+        error:
           existing.status === "approved"
             ? "You are already approved for this institution"
             : "You already have a pending request for this institution",
@@ -42,7 +42,7 @@ exports.createRequest = async (req, res) => {
     );
     res.status(201).json(request);
   } catch (error) {
-    res.status(500).json({ message: "Unable to create membership request", error: error.message });
+    res.status(500).json({ error: "Unable to create membership request", detail: error.message });
   }
 };
 
@@ -59,7 +59,7 @@ exports.getMine = async (req, res) => {
     });
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch membership requests", error: error.message });
+    res.status(500).json({ error: "Unable to fetch membership requests", detail: error.message });
   }
 };
 
@@ -67,14 +67,14 @@ exports.updateRequest = async (req, res) => {
   try {
     const { status } = req.body;
     if (!["approved", "rejected", "pending"].includes(status)) {
-      return res.status(400).json({ message: "Invalid request status" });
+      return res.status(400).json({ error: "Invalid request status" });
     }
 
     const existing = await prisma.institutionJoinRequest.findUnique({ where: { id: Number(req.params.id) } });
-    if (!existing) return res.status(404).json({ message: "Membership request not found" });
+    if (!existing) return res.status(404).json({ error: "Membership request not found" });
     const institution = await prisma.institution.findUnique({ where: { institutionId: existing.institutionId } });
     if (!institution || institution.adminWallet.toLowerCase() !== req.authWallet.toLowerCase()) {
-      return res.status(403).json({ message: "Only the institution admin can update this request" });
+      return res.status(403).json({ error: "Only the institution admin can update this request" });
     }
 
     const request = await prisma.institutionJoinRequest.update({
@@ -93,8 +93,14 @@ exports.updateRequest = async (req, res) => {
       `Membership request ${status}`,
       `Your request to join ${institution.name} was ${status}.`
     );
+    await createNotification(
+      institution.adminWallet,
+      `membership_${status}`,
+      `Membership request ${status}`,
+      `${existing.doctorWallet} was ${status} for ${institution.name}.`
+    );
     res.json(request);
   } catch (error) {
-    res.status(500).json({ message: "Unable to update membership request", error: error.message });
+    res.status(500).json({ error: "Unable to update membership request", detail: error.message });
   }
 };

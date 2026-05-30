@@ -16,12 +16,12 @@ exports.registerUser = async (req, res) => {
     } = req.body;
 
     if (!wallet || !name || !email || !role) {
-      return res.status(400).json({ message: "wallet, name, email, and role are required" });
+      return res.status(400).json({ error: "wallet, name, email, and role are required" });
     }
 
     const normalizedWallet = wallet.toLowerCase();
     if (req.authWallet !== normalizedWallet) {
-      return res.status(403).json({ message: "Signed wallet does not match registration wallet" });
+      return res.status(403).json({ error: "Signed wallet does not match registration wallet" });
     }
     const user = await prisma.user.upsert({
       where: { wallet: normalizedWallet },
@@ -52,7 +52,7 @@ exports.registerUser = async (req, res) => {
 
     res.status(201).json(user);
   } catch (error) {
-    res.status(500).json({ message: "Unable to register user", error: error.message });
+    res.status(500).json({ error: "Unable to register user", detail: error.message });
   }
 };
 
@@ -63,11 +63,11 @@ exports.getUserByWallet = async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ error: "User not found" });
     }
 
     res.json(user);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch user", error: error.message });
+    res.status(500).json({ error: "Unable to fetch user", detail: error.message });
   }
 };

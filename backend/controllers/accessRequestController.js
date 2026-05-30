@@ -5,7 +5,7 @@ exports.createRequest = async (req, res) => {
   try {
     const { recordId, patientWallet, requestType = "doctor", institutionId, reason } = req.body;
     if (!recordId || !patientWallet) {
-      return res.status(400).json({ message: "recordId and patientWallet are required" });
+      return res.status(400).json({ error: "recordId and patientWallet are required" });
     }
 
     const requesterWallet = req.authWallet.toLowerCase();
@@ -19,7 +19,7 @@ exports.createRequest = async (req, res) => {
     });
     if (existing) {
       return res.status(409).json({
-        message:
+        error:
           existing.status === "approved"
             ? "You already have approved access for this record"
             : "You already have a pending request for this record",
@@ -47,7 +47,7 @@ exports.createRequest = async (req, res) => {
     );
     res.status(201).json(request);
   } catch (error) {
-    res.status(500).json({ message: "Unable to create access request", error: error.message });
+    res.status(500).json({ error: "Unable to create access request", detail: error.message });
   }
 };
 
@@ -62,7 +62,7 @@ exports.getMine = async (req, res) => {
     });
     res.json(requests);
   } catch (error) {
-    res.status(500).json({ message: "Unable to fetch access requests", error: error.message });
+    res.status(500).json({ error: "Unable to fetch access requests", detail: error.message });
   }
 };
 
@@ -70,13 +70,13 @@ exports.updateRequest = async (req, res) => {
   try {
     const { status } = req.body;
     if (!["approved", "rejected", "pending"].includes(status)) {
-      return res.status(400).json({ message: "Invalid request status" });
+      return res.status(400).json({ error: "Invalid request status" });
     }
 
     const existing = await prisma.accessRequest.findUnique({ where: { id: Number(req.params.id) } });
-    if (!existing) return res.status(404).json({ message: "Access request not found" });
+    if (!existing) return res.status(404).json({ error: "Access request not found" });
     if (existing.patientWallet.toLowerCase() !== req.authWallet.toLowerCase()) {
-      return res.status(403).json({ message: "Only the patient can update this request" });
+      return res.status(403).json({ error: "Only the patient can update this request" });
     }
 
     const request = await prisma.accessRequest.update({
@@ -91,6 +91,6 @@ exports.updateRequest = async (req, res) => {
     );
     res.json(request);
   } catch (error) {
-    res.status(500).json({ message: "Unable to update access request", error: error.message });
+    res.status(500).json({ error: "Unable to update access request", detail: error.message });
   }
 };
