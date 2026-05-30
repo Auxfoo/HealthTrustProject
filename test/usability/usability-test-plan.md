@@ -53,7 +53,7 @@ http://localhost:5173
 | Patient downloads branded care-document PDF | Less than 1 minute | PDF opens and user can identify title, metadata, and content. |
 | Patient exports audit report PDF | Less than 1 minute | PDF opens and user can identify the audit timeline. |
 | Doctor reviews Notes/Documents/Membership history | Less than 2 minutes | User can identify record, status/type, date, and message. |
-| Doctor runs diabetes prediction | Less than 2 minutes | Prediction result appears, glucose context is visible, and history updates. |
+| Doctor runs diabetes prediction | Less than 2 minutes | Prediction result appears with the model probability, and history updates. |
 | Doctor submits institution membership request | Less than 2 minutes | User can identify available institutions and cannot choose the same requested or approved institution again. |
 | Doctor requests emergency access | Less than 2 minutes | Dropdown is understandable and excludes already accessible records. |
 | Institution admin approves doctor request | Less than 2 minutes | Doctor becomes institution member. |
@@ -77,7 +77,6 @@ http://localhost:5173
 - Does the admin understand Doctor Requests, Shared records, key counts, and doctor removal?
 - Do exported PDFs read as reports rather than replacements for original uploaded records?
 - Does the doctor understand why some emergency records or institutions are hidden from dropdowns?
-- Does the doctor understand that blood glucose interpretation depends on whether the reading is fasting, random, or after-meal/2-hour?
 - Are success/error notifications visible without blocking important controls?
 - Does the Kurdish language toggle apply consistently across all pages and forms, including registration and doctor notes/documents forms?
 - Does the blood type dropdown make registration feel simpler than a free-text input?

@@ -65,7 +65,7 @@ Sepolia smart contract
   | record CIDs, permissions, institutions, membership, audit events
 
 FastAPI ML service
-  | scikit-learn model + clinical-rule probability blend
+  | scikit-learn model trained from CSV features
   v
 Diabetes prediction result
 ```
@@ -104,9 +104,8 @@ The prediction feature is a prototype decision-support demo. It is trained from 
 - BMI
 - HbA1c level
 - blood glucose level
-- glucose context: unknown, fasting, random, or post-meal
 
-The service returns the final prediction, final probability, trained model probability, and clinical-rule probability. It is not a diagnosis and must not replace medical judgment.
+The service returns only the trained model prediction and probability. It is not a diagnosis and must not replace medical judgment.
 
 ## Demo Assets
 

@@ -14,12 +14,11 @@ const initialValues = {
   bmi: "",
   HbA1c_level: "",
   blood_glucose_level: "",
-  glucose_context: "unknown",
 };
 
 const fieldConfig = {
   gender: { label: "Gender", type: "select", options: ["Female", "Male", "Other"] },
-  age: { label: "Age", type: "number", step: "0.1", min: 0, max: 120, parser: Number.parseFloat },
+  age: { label: "Age", type: "number", step: "0.1", parser: Number.parseFloat },
   hypertension: { label: "Hypertension", type: "select", options: [{ value: "0", label: "No" }, { value: "1", label: "Yes" }] },
   heart_disease: { label: "Heart disease", type: "select", options: [{ value: "0", label: "No" }, { value: "1", label: "Yes" }] },
   smoking_history: {
@@ -27,19 +26,9 @@ const fieldConfig = {
     type: "select",
     options: ["never", "No Info", "current", "former", "ever", "not current"],
   },
-  bmi: { label: "BMI", type: "number", step: "0.01", min: 10, max: 80, parser: Number.parseFloat },
-  HbA1c_level: { label: "HbA1c level", type: "number", step: "0.1", min: 3.5, max: 18, parser: Number.parseFloat },
-  blood_glucose_level: { label: "Blood glucose level", type: "number", step: "1", min: 40, max: 600, parser: (value) => Number.parseInt(value, 10) },
-  glucose_context: {
-    label: "Glucose test context",
-    type: "select",
-    options: [
-      { value: "unknown", label: "Unknown / not sure" },
-      { value: "fasting", label: "Fasting" },
-      { value: "random", label: "Random" },
-      { value: "post_meal", label: "2-hour / after meal" },
-    ],
-  },
+  bmi: { label: "BMI", type: "number", step: "0.01", parser: Number.parseFloat },
+  HbA1c_level: { label: "HbA1c level", type: "number", step: "0.1", parser: Number.parseFloat },
+  blood_glucose_level: { label: "Blood glucose level", type: "number", step: "1", parser: (value) => Number.parseInt(value, 10) },
 };
 
 export default function PredictionForm({ onResult, values, onValuesChange, patientWallet, onPatientWalletChange }) {
@@ -85,12 +74,12 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
     );
     const invalidField = Object.entries(payload).find(([key, value]) => {
       const config = fieldConfig[key];
-      return config?.type === "number" && (!Number.isFinite(value) || value < config.min || value > config.max);
+      return config?.type === "number" && !Number.isFinite(value);
     });
     if (invalidField) {
       const [key] = invalidField;
       const config = fieldConfig[key];
-      toast.error(`${config.label} is outside the realistic range (${config.min}-${config.max}).`);
+      toast.error(`${config.label} must be a valid number.`);
       setLoading(false);
       return;
     }
@@ -134,8 +123,6 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
             <input
               type="number"
               step={fieldConfig[field].step}
-              min={fieldConfig[field].min}
-              max={fieldConfig[field].max}
               value={formValues[field]}
               onChange={(event) => updateValue(field, event.target.value)}
               required

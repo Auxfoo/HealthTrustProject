@@ -51,7 +51,6 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
-    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -67,7 +66,7 @@ print(main.predict(payload))
 | ML model training | `cd ml_service && python train.py` | PASS |
 | ML direct prediction | Import `main.py` and call `main.predict(...)` | PASS |
 
-Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
+Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, and ML prediction smoke test were re-verified on 2026-05-29 after the prediction update.
 
 ## Backend Unit Test Summary
 
@@ -95,9 +94,10 @@ Total blockchain tests: 3 passed, 0 failed.
 Training summary:
 
 ```text
-Accuracy: 0.97
-Brier score: 0.0237
-Probability distribution: 81.9% at extremes (<5% or >95%), 4.3% in mid-range (20%-80%)
+Accuracy: 0.88
+Recall: 0.88
+Brier score: 0.0803
+Probability distribution: 54.0% at extremes (<5% or >95%), 23.2% in mid-range (20%-80%)
 ```
 
 Prediction smoke test input:
@@ -111,8 +111,7 @@ Prediction smoke test input:
   "smoking_history": "never",
   "bmi": 27.32,
   "HbA1c_level": 6.6,
-  "blood_glucose_level": 140,
-  "glucose_context": "unknown"
+  "blood_glucose_level": 140
 }
 ```
 
@@ -121,20 +120,8 @@ Prediction output:
 ```json
 {
   "prediction": 1,
-  "probability": 0.8286566366692054,
-  "modelProbability": 0.05526340771454772,
-  "clinicalProbability": 0.8286566366692054
+  "probability": 0.5260096618629037
 }
-```
-
-Glucose context check:
-
-```text
-Male, age 20, BMI 20, HbA1c 5.0, glucose 180
-unknown context: 37% risk
-fasting context: 99% risk
-random context: 36% risk
-post_meal context: 41% risk
 ```
 
 ## Notes

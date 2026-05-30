@@ -163,8 +163,10 @@ https://www.kaggle.com/datasets/iammustafatz/diabetes-prediction-dataset
 Expected CSV fields:
 
 ```text
-gender, age, hypertension, heart_disease, smoking_history, bmi, HbA1c_level, blood_glucose_level
+gender, age, hypertension, heart_disease, smoking_history, bmi, HbA1c_level, blood_glucose_level, diabetes
 ```
+
+The prediction API accepts the same fields except the `diabetes` target column.
 
 Train the model:
 
@@ -179,14 +181,6 @@ Training writes:
 ```text
 ml_service\model.pkl
 ```
-
-The API also accepts `glucose_context` values:
-
-```text
-unknown, fasting, random, post_meal
-```
-
-`glucose_context` is not part of the Kaggle dataset. HealthTrust uses it in the clinical-rule probability blend so fasting, random, and post-meal readings are interpreted differently.
 
 ## 6. Smart Contract Setup
 
@@ -361,7 +355,6 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
-    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -370,7 +363,7 @@ print(main.predict(payload))
 Expected output shape:
 
 ```text
-{'prediction': 1, 'probability': ..., 'modelProbability': ..., 'clinicalProbability': ...}
+{'prediction': 1, 'probability': ...}
 ```
 
 Testing evidence lives in:

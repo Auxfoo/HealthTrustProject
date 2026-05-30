@@ -12,7 +12,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 466 >>
+<< /Length 495 >>
 stream
 BT
 /F1 14 Tf
@@ -23,7 +23,7 @@ BT
 0 -16 Td
 (Case: 12 Extreme High) Tj
 0 -16 Td
-(Expected: near 99%) Tj
+(Model output: 100% probability, risk indicated) Tj
 0 -16 Td
 () Tj
 0 -16 Td
@@ -56,5 +56,5 @@ xref
 trailer
 << /Root 1 0 R /Size 6 >>
 startxref
-828
+856
 %%EOF

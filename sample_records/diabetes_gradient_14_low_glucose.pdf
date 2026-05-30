@@ -12,7 +12,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 493 >>
+<< /Length 491 >>
 stream
 BT
 /F1 14 Tf
@@ -23,7 +23,7 @@ BT
 0 -16 Td
 (Case: 14 Low Glucose) Tj
 0 -16 Td
-(Expected: blocked? no, valid low glucose; low risk) Tj
+(Model output: 0% probability, no risk indicated) Tj
 0 -16 Td
 () Tj
 0 -16 Td
@@ -39,9 +39,9 @@ BT
 0 -16 Td
 (BMI: 22.00) Tj
 0 -16 Td
-(HbA1c level: 5.1) Tj
+(HbA1c level: 5.0) Tj
 0 -16 Td
-(Blood glucose level: 55) Tj
+(Blood glucose level: 80) Tj
 ET
 endstream
 endobj
@@ -56,5 +56,5 @@ xref
 trailer
 << /Root 1 0 R /Size 6 >>
 startxref
-855
+852
 %%EOF

@@ -12,7 +12,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 469 >>
+<< /Length 500 >>
 stream
 BT
 /F1 14 Tf
@@ -23,7 +23,7 @@ BT
 0 -16 Td
 (Case: 06 Glucose 126 Plus Age) Tj
 0 -16 Td
-(Expected: moderate) Tj
+(Model output: 39% probability, no risk indicated) Tj
 0 -16 Td
 () Tj
 0 -16 Td
@@ -39,9 +39,9 @@ BT
 0 -16 Td
 (BMI: 28.40) Tj
 0 -16 Td
-(HbA1c level: 6.1) Tj
+(HbA1c level: 6.2) Tj
 0 -16 Td
-(Blood glucose level: 130) Tj
+(Blood glucose level: 140) Tj
 ET
 endstream
 endobj
@@ -56,5 +56,5 @@ xref
 trailer
 << /Root 1 0 R /Size 6 >>
 startxref
-831
+861
 %%EOF

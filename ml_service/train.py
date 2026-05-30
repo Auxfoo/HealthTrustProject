@@ -2,20 +2,17 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.compose import ColumnTransformer
-from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.metrics import brier_score_loss, classification_report
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.linear_model import LogisticRegression
 
 BASE_DIR = Path(__file__).resolve().parent
 DATASET_PATH = BASE_DIR / "diabetes_prediction_dataset.csv"
 MODEL_PATH = BASE_DIR / "model.pkl"
 
-GENDER_CATEGORIES = ["Female", "Male", "Other"]
-SMOKING_CATEGORIES = ["No Info", "current", "ever", "former", "never", "not current"]
 CATEGORICAL_FEATURES = ["gender", "smoking_history"]
 NUMERIC_FEATURES = [
     "age",
@@ -25,6 +22,17 @@ NUMERIC_FEATURES = [
     "HbA1c_level",
     "blood_glucose_level",
 ]
+FEATURE_COLUMNS = [
+    "gender",
+    "age",
+    "hypertension",
+    "heart_disease",
+    "smoking_history",
+    "bmi",
+    "HbA1c_level",
+    "blood_glucose_level",
+]
+TARGET_COLUMN = "diabetes"
 
 
 def main() -> None:
@@ -32,36 +40,36 @@ def main() -> None:
         raise FileNotFoundError("diabetes_prediction_dataset.csv was not found. Place it in ml_service/.")
 
     data = pd.read_csv(DATASET_PATH).drop_duplicates()
-    x = data.drop("diabetes", axis=1)
-    y = data["diabetes"]
+    expected_columns = FEATURE_COLUMNS + [TARGET_COLUMN]
+    missing_columns = [column for column in expected_columns if column not in data.columns]
+    if missing_columns:
+        raise ValueError(f"Dataset is missing required column(s): {', '.join(missing_columns)}")
+
+    x = data[FEATURE_COLUMNS]
+    y = data[TARGET_COLUMN]
 
     preprocessor = ColumnTransformer(
         transformers=[
             (
                 "categorical",
                 OneHotEncoder(
-                    categories=[GENDER_CATEGORIES, SMOKING_CATEGORIES],
                     handle_unknown="ignore",
                     sparse_output=False,
                 ),
                 CATEGORICAL_FEATURES,
             ),
-            ("numeric", "passthrough", NUMERIC_FEATURES),
+            ("numeric", StandardScaler(), NUMERIC_FEATURES),
         ]
     )
 
-    monotonic_constraints = [0] * (len(GENDER_CATEGORIES) + len(SMOKING_CATEGORIES)) + [1] * len(NUMERIC_FEATURES)
-
-    base_model = Pipeline(
+    model = Pipeline(
         steps=[
             ("preprocessor", preprocessor),
             (
                 "classifier",
-                HistGradientBoostingClassifier(
-                    max_iter=350,
-                    learning_rate=0.05,
-                    l2_regularization=0.1,
-                    monotonic_cst=monotonic_constraints,
+                LogisticRegression(
+                    max_iter=2000,
+                    class_weight="balanced",
                     random_state=42,
                 ),
             ),
@@ -72,7 +80,6 @@ def main() -> None:
         x, y, test_size=0.2, random_state=42, stratify=y
     )
 
-    model = CalibratedClassifierCV(base_model, method="isotonic", cv=5)
     model.fit(x_train, y_train)
 
     predictions = model.predict(x_test)

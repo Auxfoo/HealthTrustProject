@@ -53,7 +53,6 @@ payload = main.DiabetesInput(
     bmi=27.32,
     HbA1c_level=6.6,
     blood_glucose_level=140,
-    glucose_context="unknown",
 )
 print(main.predict(payload))
 '@ | .\.venv\Scripts\python.exe -
@@ -66,11 +65,10 @@ print(main.predict(payload))
 | Backend authentication middleware and protected routes | `npm test` in `backend` | PASS |
 | Smart contract and Hardhat local chain | `npm test` in `blockchain` | PASS |
 | React frontend and shared contract config imports | `npm run build` in `frontend` | PASS |
-| ML training pipeline and saved model artifact | `train.py` created `model.pkl` with calibrated HistGradientBoostingClassifier pipeline | PASS |
-| FastAPI prediction logic and trained model | Direct call to `main.predict(...)` returned prediction, blended probability, model probability, and clinical probability | PASS |
-| Glucose context clinical-rule blend | Same glucose value changes interpretation when context is fasting, random, post-meal, or unknown; 199/200 no longer has a large hard jump | PASS |
+| ML training pipeline and saved model artifact | `train.py` created `model.pkl` with a scaled LogisticRegression pipeline | PASS |
+| FastAPI prediction logic and trained model | Direct call to `main.predict(...)` returned prediction and probability from the trained model | PASS |
 
-Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML prediction smoke test, and glucose-context checks were re-verified on 2026-05-29 after the prediction update.
+Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, and ML prediction smoke test were re-verified on 2026-05-29 after the prediction update.
 
 ## Covered Behavior
 
@@ -81,7 +79,7 @@ Blockchain tests were verified on 2026-05-28. Backend tests, frontend build, ML 
 | Institution-level access works for institution doctors | Blockchain tests passed. |
 | Contract supports clinician-created patient-owned records | Blockchain tests passed. |
 | Frontend compiles with current patient, doctor, institution, modal, and prediction UI | Frontend build passed. |
-| ML service accepts the current diabetes prediction dataset fields, `glucose_context`, and realistic input ranges | Direct prediction returned valid JSON with model and clinical probabilities. |
+| ML service accepts the current diabetes prediction dataset fields | Direct prediction returned valid JSON with model prediction and probability. |
 | Patient upload UI can represent each async step without relying only on auto-dismissed toast messages | Frontend build passed; browser confirmation required. |
 | Doctor notes/documents/membership histories use the current structured row components | Frontend build passed; browser confirmation required. |
 | Institution Shared tab can show doctor key counts | Frontend build passed; browser confirmation required. |
@@ -132,7 +130,6 @@ Then test:
 | Admin removes doctor | Doctor receives notification and loses institution-based access. |
 | Doctor sends note/document | Patient sees note/document content. |
 | Doctor runs prediction | Result and history update. Full history is visible with no count cap. |
-| Doctor chooses glucose test context | Prediction uses unknown, fasting, random, or 2-hour/after-meal context in the clinical-rule blend. |
 | Doctor requests emergency access | Patient sees access request and can approve/reject access/key sharing. |
 | Doctor already has access to an emergency record | That record is hidden from the emergency request dropdown. |
 | Doctor selects an institution during registration | A membership request is created automatically. |

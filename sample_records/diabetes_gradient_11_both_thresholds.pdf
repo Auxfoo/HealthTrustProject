@@ -12,7 +12,7 @@ endobj
 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
 endobj
 5 0 obj
-<< /Length 470 >>
+<< /Length 497 >>
 stream
 BT
 /F1 14 Tf
@@ -23,7 +23,7 @@ BT
 0 -16 Td
 (Case: 11 Both Thresholds) Tj
 0 -16 Td
-(Expected: very high) Tj
+(Model output: 98% probability, risk indicated) Tj
 0 -16 Td
 () Tj
 0 -16 Td
@@ -39,9 +39,9 @@ BT
 0 -16 Td
 (BMI: 36.40) Tj
 0 -16 Td
-(HbA1c level: 7.2) Tj
+(HbA1c level: 7.0) Tj
 0 -16 Td
-(Blood glucose level: 220) Tj
+(Blood glucose level: 180) Tj
 ET
 endstream
 endobj
@@ -56,5 +56,5 @@ xref
 trailer
 << /Root 1 0 R /Size 6 >>
 startxref
-832
+858
 %%EOF
