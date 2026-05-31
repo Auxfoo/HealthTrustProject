@@ -19,7 +19,7 @@ const initialValues = {
 
 const fieldConfig = {
   gender: { label: "Gender", type: "select", options: ["Female", "Male", "Other"] },
-  age: { label: "Age", type: "number", step: "0.1", parser: Number.parseFloat },
+  age: { label: "Age", type: "number", step: "0.1", min: 0, max: 120, parser: Number.parseFloat },
   hypertension: { label: "Hypertension", type: "select", options: [{ value: "0", label: "No" }, { value: "1", label: "Yes" }] },
   heart_disease: { label: "Heart disease", type: "select", options: [{ value: "0", label: "No" }, { value: "1", label: "Yes" }] },
   smoking_history: {
@@ -27,9 +27,9 @@ const fieldConfig = {
     type: "select",
     options: ["never", "No Info", "current", "former", "ever", "not current"],
   },
-  bmi: { label: "BMI", type: "number", step: "0.01", parser: Number.parseFloat },
-  HbA1c_level: { label: "HbA1c level", type: "number", step: "0.1", parser: Number.parseFloat },
-  blood_glucose_level: { label: "Blood glucose level", type: "number", step: "1", parser: (value) => Number.parseInt(value, 10) },
+  bmi: { label: "BMI", type: "number", step: "0.01", min: 10, max: 80, parser: Number.parseFloat },
+  HbA1c_level: { label: "HbA1c level", type: "number", step: "0.1", min: 3, max: 15, parser: Number.parseFloat },
+  blood_glucose_level: { label: "Blood glucose level", type: "number", step: "1", min: 40, max: 600, parser: (value) => Number.parseInt(value, 10) },
 };
 
 export default function PredictionForm({ onResult, values, onValuesChange, patientWallet, onPatientWalletChange }) {
@@ -81,7 +81,18 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
     if (invalidField) {
       const [key] = invalidField;
       const config = fieldConfig[key];
-      toast.error(`${config.label} must be a valid number.`);
+      toast.error(`${t(config.label)} ${t("must be a valid number.")}`);
+      setLoading(false);
+      return;
+    }
+    const outOfRangeField = Object.entries(payload).find(([key, value]) => {
+      const config = fieldConfig[key];
+      return config?.type === "number" && ((config.min !== undefined && value < config.min) || (config.max !== undefined && value > config.max));
+    });
+    if (outOfRangeField) {
+      const [key] = outOfRangeField;
+      const config = fieldConfig[key];
+      toast.error(`${t(config.label)} ${t("must be between")} ${config.min} ${t("and")} ${config.max}.`);
       setLoading(false);
       return;
     }
@@ -102,7 +113,7 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
   }
 
   return (
-    <form className="prediction-form" onSubmit={submit}>
+    <form className="prediction-form" onSubmit={submit} noValidate>
       <p className="notice">
         {t("PDF auto-fill works only after opening a text-based PDF record; scanned image PDFs need manual entry.")}
       </p>
@@ -129,6 +140,8 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
             <input
               type="number"
               step={fieldConfig[field].step}
+              min={fieldConfig[field].min}
+              max={fieldConfig[field].max}
               value={formValues[field]}
               onChange={(event) => updateValue(field, event.target.value)}
               required
