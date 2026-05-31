@@ -278,8 +278,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
         </div>
 
         <p className="notice">
-          Revoking access stops future authorized access and removes shared encrypted keys. It cannot remove copies that were
-          already decrypted or downloaded.
+          {t("Revoking access stops future authorized access and removes shared encrypted keys. It cannot remove copies that were already decrypted or downloaded.")}
         </p>
 
         {accessStatus && (
@@ -375,7 +374,7 @@ export default function AccessModal({ record, aesKey, keyRows = [], onRefresh, o
               </button>
             </div>
             <p className="notice">
-              When a new doctor joins an institution that already has record access, share keys again so that doctor receives a MetaMask-encrypted key envelope.
+              {t("When a new doctor joins an institution that already has record access, share keys again so that doctor receives a MetaMask-encrypted key envelope.")}
             </p>
             <h3>{t("Institution Key Envelopes")}</h3>
             <div className="request-list">

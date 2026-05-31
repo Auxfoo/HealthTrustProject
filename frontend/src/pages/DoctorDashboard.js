@@ -961,7 +961,7 @@ export default function DoctorDashboard() {
                   </div>
                 </article>
               </div>
-              <p>This ML output is NOT a clinical diagnosis. A licensed clinician must review the patient context and confirm any care decision.</p>
+              <p>{t("This ML output is NOT a clinical diagnosis. A licensed clinician must review the patient context and confirm any care decision.")}</p>
             </div>
           )}
         </section>

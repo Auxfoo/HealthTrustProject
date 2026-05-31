@@ -4,6 +4,7 @@ import { toast } from "react-toastify";
 import { Send } from "lucide-react";
 import { useWallet } from "../context/WalletContext";
 import { createAuthHeaders } from "../utils/auth";
+import { useLanguage } from "../i18n";
 
 const initialValues = {
   gender: "Female",
@@ -33,6 +34,7 @@ const fieldConfig = {
 
 export default function PredictionForm({ onResult, values, onValuesChange, patientWallet, onPatientWalletChange }) {
   const { API_URL, walletAddress } = useWallet();
+  const { t, localizeText } = useLanguage();
   const [localValues, setLocalValues] = useState(initialValues);
   const [loading, setLoading] = useState(false);
   const [localPatientWallet, setLocalPatientWallet] = useState("");
@@ -92,7 +94,8 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
       );
       onResult(response.data);
     } catch (error) {
-      toast.error(error.response?.data?.error || error.response?.data?.message || error.message);
+      const message = error.response?.data?.error || error.response?.data?.message || error.message;
+      toast.error(localizeText(message));
     } finally {
       setLoading(false);
     }
@@ -101,15 +104,15 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
   return (
     <form className="prediction-form" onSubmit={submit}>
       <p className="notice">
-        PDF auto-fill works only after opening a text-based PDF record; scanned image PDFs need manual entry.
+        {t("PDF auto-fill works only after opening a text-based PDF record; scanned image PDFs need manual entry.")}
       </p>
       <label>
-        Patient wallet
-        <input value={selectedPatientWallet} onChange={(event) => updatePatientWallet(event.target.value)} placeholder="Optional" />
+        {t("Patient wallet")}
+        <input value={selectedPatientWallet} onChange={(event) => updatePatientWallet(event.target.value)} placeholder={t("Optional")} />
       </label>
       {Object.keys(initialValues).map((field) => (
         <label key={field}>
-          {fieldConfig[field].label}
+          {t(fieldConfig[field].label)}
           {fieldConfig[field].type === "select" ? (
             <select value={formValues[field]} onChange={(event) => updateValue(field, event.target.value)} required>
               {fieldConfig[field].options.map((option) => {
@@ -117,7 +120,7 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
                 const label = typeof option === "string" ? option : option.label;
                 return (
                   <option key={value} value={value}>
-                    {label}
+                    {t(label)}
                   </option>
                 );
               })}
@@ -135,7 +138,7 @@ export default function PredictionForm({ onResult, values, onValuesChange, patie
       ))}
       <button className="icon-button with-label submit-wide" disabled={loading}>
         <Send size={16} />
-        {loading ? "Submitting..." : "Submit"}
+        {loading ? t("Submitting...") : t("Submit")}
       </button>
     </form>
   );

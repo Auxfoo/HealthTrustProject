@@ -984,7 +984,25 @@ th {
 }
 
 .prediction-form {
-  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  align-items: end;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
+}
+
+.prediction-form label {
+  gap: 0.34rem;
+}
+
+.prediction-form .notice {
+  grid-column: 1 / -1;
+  margin-bottom: 0.15rem;
+  padding: 0.72rem 0.82rem;
+}
+
+.prediction-form input,
+.prediction-form select {
+  min-height: 38px;
+  padding: 0.48rem 0.68rem;
 }
 
 .submit-wide {
