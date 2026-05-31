@@ -293,44 +293,44 @@ export default function InstitutionDashboard() {
 
   function exportInstitutionAuditPdf() {
     const blob = createHealthTrustPdf({
-      title: "Institution Audit Report",
-      subtitle: "Membership, shared-record, and access activity exported from HealthTrust.",
+      title: t("Institution Audit Report"),
+      subtitle: t("Membership, shared-record, and access activity exported from HealthTrust."),
       meta: [
-        { label: "Institution", value: institution?.name || "Not registered" },
-        { label: "Admin wallet", value: walletAddress },
-        { label: "Generated", value: new Date().toLocaleString() },
-        { label: "Events", value: String(institutionAuditRows.length) },
-        { label: "Doctors", value: String(doctors.length) },
-        { label: "Shared records", value: String(activeSharedRecords) },
+        { label: t("Institution"), value: institution?.name || t("Not registered") },
+        { label: t("Admin wallet"), value: walletAddress },
+        { label: t("Generated"), value: formatDate(new Date()) },
+        { label: t("Events"), value: formatNumber(institutionAuditRows.length) },
+        { label: t("Doctors"), value: formatNumber(doctors.length) },
+        { label: t("Shared records"), value: formatNumber(activeSharedRecords) },
       ],
       sections: [
         {
-          heading: "Operational Summary",
+          heading: t("Operational Summary"),
           accent: "#22b8aa",
           rows: [
-            `Pending membership requests: ${pendingMembership.length}`,
-            `Monthly encrypted key events: ${monthlyAccessEvents}`,
-            `Shared record categories: ${Object.entries(categoryCounts).map(([category, count]) => `${category} (${count})`).join(", ") || "None"}`,
+            `${t("Pending membership requests")}: ${formatNumber(pendingMembership.length)}`,
+            `${t("Monthly encrypted key events")}: ${formatNumber(monthlyAccessEvents)}`,
+            `${t("Shared record categories")}: ${Object.entries(categoryCounts).map(([category, count]) => `${localizeText(category)} (${formatNumber(count)})`).join(", ") || t("None")}`,
           ],
         },
         {
-          heading: "Audit Timeline",
+          heading: t("Audit Timeline"),
           accent: "#0a84ff",
           rows: institutionAuditRows.map((row) => ({
-            label: `${row.timestamp.toLocaleString()} - ${row.action}`,
-            value: `Target: ${row.target}${row.detail ? ` | ${row.detail}` : ""}`,
+            label: `${formatDate(row.timestamp)} - ${localizeText(row.action)}`,
+            value: `${t("Target")}: ${localizeText(row.target)}${row.detail ? ` | ${localizeText(row.detail)}` : ""}`,
           })),
         },
         {
-          heading: "Security Note",
+          heading: t("Security Note"),
           accent: "#ffb020",
           rows: [
-            "Encrypted files remain off-chain. The report summarizes permissions, key envelopes, membership actions, and blockchain events.",
-            "Revocation prevents future authorized access but cannot erase files that were already downloaded or decrypted.",
+            t("Encrypted files remain off-chain. The report summarizes permissions, key envelopes, membership actions, and blockchain events."),
+            t("Revocation prevents future authorized access but cannot erase files that were already downloaded or decrypted."),
           ],
         },
       ],
-      footer: "HealthTrust institution audit report - Sepolia prototype",
+      footer: t("HealthTrust institution audit report - Sepolia prototype"),
     });
     const url = URL.createObjectURL(blob);
     const link = window.document.createElement("a");

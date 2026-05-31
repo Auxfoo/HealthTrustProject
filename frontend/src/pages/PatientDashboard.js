@@ -337,31 +337,31 @@ export default function PatientDashboard() {
 
   function downloadCarePdf(careDocument) {
     const blob = createHealthTrustPdf({
-      title: careDocument.title,
-      subtitle: "Care document generated inside the HealthTrust patient vault.",
+      title: localizeText(careDocument.title),
+      subtitle: t("Care document generated inside the HealthTrust patient vault."),
       meta: [
-        { label: "Type", value: careDocument.documentType },
-        { label: "Created", value: new Date(careDocument.createdAt).toLocaleString() },
-        { label: "Doctor wallet", value: careDocument.doctorWallet },
-        { label: "Patient wallet", value: careDocument.patientWallet },
+        { label: t("Type"), value: localizeText(careDocument.documentType) },
+        { label: t("Created"), value: formatDate(careDocument.createdAt) },
+        { label: t("Doctor wallet"), value: careDocument.doctorWallet },
+        { label: t("Patient wallet"), value: careDocument.patientWallet },
       ],
       sections: [
         {
-          heading: "Clinical Content",
+          heading: t("Clinical Content"),
           accent: "#22b8aa",
-          rows: [careDocument.content || "Encrypted file is stored on IPFS."],
+          rows: [localizeText(careDocument.content || t("Encrypted file is stored on IPFS."))],
         },
         ...(careDocument.cid
           ? [
             {
-              heading: "Storage Reference",
+              heading: t("Storage Reference"),
               accent: "#0a84ff",
               rows: [{ label: "IPFS CID", value: careDocument.cid }],
             },
           ]
           : []),
       ],
-      footer: "HealthTrust care document - prototype, not a clinical certification",
+      footer: t("HealthTrust care document - prototype, not a clinical certification"),
     });
     const url = URL.createObjectURL(blob);
     const link = window.document.createElement("a");
@@ -374,25 +374,25 @@ export default function PatientDashboard() {
   function exportAuditPdf() {
     const rows = auditTrail.length ? auditTrail : [];
     const blob = createHealthTrustPdf({
-      title: "Patient Audit Report",
-      subtitle: "Tamper-resistant access and workflow timeline exported from HealthTrust.",
+      title: t("Patient Audit Report"),
+      subtitle: t("Tamper-resistant access and workflow timeline exported from HealthTrust."),
       meta: [
-        { label: "Patient wallet", value: walletAddress },
-        { label: "Generated", value: new Date().toLocaleString() },
-        { label: "Events", value: String(rows.length) },
-        { label: "Network", value: "Sepolia prototype" },
+        { label: t("Patient wallet"), value: walletAddress },
+        { label: t("Generated"), value: formatDate(new Date()) },
+        { label: t("Events"), value: formatNumber(rows.length) },
+        { label: t("Network"), value: t("Sepolia prototype") },
       ],
       sections: [
         {
-          heading: "Audit Timeline",
+          heading: t("Audit Timeline"),
           accent: "#0a84ff",
           rows: rows.map((row) => ({
-            label: row.action,
-            value: `${row.timestamp} | ${typeof row.recordId === "number" ? `Record: #${row.recordId} | ` : ""}Target: ${row.target}${row.detail ? ` | ${row.detail}` : ""}`,
+            label: `${formatDate(row.timestamp)} - ${localizeText(row.action)}`,
+            value: `${typeof row.recordId === "number" ? `${t("Record")}: #${formatNumber(row.recordId)} | ` : ""}${t("Target")}: ${localizeText(row.target)}${row.detail ? ` | ${localizeText(row.detail)}` : ""}`,
           })),
         },
       ],
-      footer: "HealthTrust audit report - blockchain events plus application workflow events",
+      footer: t("HealthTrust audit report - blockchain events plus application workflow events"),
     });
     const url = URL.createObjectURL(blob);
     const link = window.document.createElement("a");
