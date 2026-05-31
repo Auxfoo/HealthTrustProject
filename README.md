@@ -113,6 +113,16 @@ Fake diabetes PDF records are available in `sample_records/`. The current filena
 
 Screenshot evidence for reports is stored in `docs/screenshots/`.
 
+## Test Results
+
+| Check | Result |
+| --- | --- |
+| Backend tests | PASS, 4 passed |
+| Blockchain tests | PASS, 5 passing |
+| Frontend production build | PASS |
+| ML training | PASS, accuracy 0.88, recall 0.88, Brier 0.0803 |
+| ML prediction smoke test | PASS, prediction 1, probability 0.53 |
+
 ## Status And Evidence
 
 For setup, environment variables, database commands, contract deployment, ML training, service startup, and demo reset, use [PROJECT_GUIDE.md](PROJECT_GUIDE.md).
