@@ -137,7 +137,6 @@ For current automated test results and manual test evidence, use the files under
 - Wallet loss or missing key envelopes can make record recovery impossible.
 - Pinata/IPFS availability affects retrieval.
 - Institution admins are self-registered; there is no real institution verification/KYC.
-- No formal smart-contract or security audit has been completed.
 - The diabetes prediction feature is non-diagnostic.
 - Local database resets do not reset Sepolia smart-contract state.
 
